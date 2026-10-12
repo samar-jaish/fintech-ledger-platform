@@ -1,4 +1,5 @@
 ![CI](https://github.com/samar-jaish/fintech-ledger-platform/actions/workflows/ci.yml/badge.svg)
+
 # Ledger Platform
 
 A double-entry ledger engine built with Java 21, Spring Boot and PostgreSQL. It focuses on the
@@ -43,6 +44,22 @@ An opt-in benchmark seeds synthetic data (Datafaker) and compares the two lockin
 mvn test -Pbenchmark
 mvn test -Pbenchmark -Dbench.seedTransactions=200000 -Dbench.threads=4   # smaller run
 ```
+
+Sample results (8 threads, PostgreSQL 16 in Docker on a laptop, 1M ledger entries, single run):
+
+| Scenario | tx/sec | p50 | p95 | p99 |
+|---|---|---|---|---|
+| Uniform accounts, pessimistic | 1217 | 6.1 ms | 8.6 ms | 12.7 ms |
+| Uniform accounts, optimistic | 1186 | 6.2 ms | 9.6 ms | 14.7 ms |
+| Single hot account, pessimistic | 321 | 24.1 ms | 27.9 ms | 32.5 ms |
+| Single hot account, optimistic | 230 | 12.4 ms | 147.2 ms | 262.9 ms |
+
+- Under low contention the two strategies perform alike (about 1% of optimistic transfers needed a retry).
+- On a single hot account, optimistic locking averaged about 2.8 retries per successful transfer and had a much heavier latency tail, which is why pessimistic locking is the default (see [ADR 0002](docs/adr/0002-pessimistic-locking-by-default.md)).
+- The per-account statement query uses the composite index `idx_entries_account_ts`: about 0.06 ms server-side over 1M entries, and about 0.8 ms p50 end to end.
+- The ledger reconciled with zero drift after roughly 96,000 benchmark transfers.
+
+Figures come from a single run on a development laptop and are indicative, not absolute.
 
 ## Design
 
