@@ -2,3 +2,8 @@ target/
 .idea/
 *.iml
 .vscode/
+
+# Personal learning notes (not part of the project)
+LEARNING_NOTES.md
+internal/
+*.local.md
