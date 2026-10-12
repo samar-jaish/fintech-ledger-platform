@@ -1,3 +1,4 @@
+![CI](https://github.com/samar-jaish/fintech-ledger-platform/actions/workflows/ci.yml/badge.svg)
 # Ledger Platform
 
 A double-entry ledger engine built with Java 21, Spring Boot and PostgreSQL. It focuses on the
