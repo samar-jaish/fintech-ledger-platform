@@ -11,8 +11,11 @@
   <groupId>com.portfolio</groupId>
   <artifactId>ledger-platform</artifactId>
   <version>0.1.0-SNAPSHOT</version>
+  <description>Double-entry ledger engine with idempotent, concurrency-safe transfers</description>
   <properties>
     <java.version>21</java.version>
+    <!-- Benchmarks are excluded from the default build; run them with: mvn test -Pbenchmark -->
+    <excludedGroups>benchmark</excludedGroups>
   </properties>
   <dependencies>
     <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-jdbc</artifactId></dependency>
@@ -24,10 +27,20 @@
     <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-testcontainers</artifactId><scope>test</scope></dependency>
     <dependency><groupId>org.testcontainers</groupId><artifactId>junit-jupiter</artifactId><scope>test</scope></dependency>
     <dependency><groupId>org.testcontainers</groupId><artifactId>postgresql</artifactId><scope>test</scope></dependency>
+    <dependency><groupId>net.datafaker</groupId><artifactId>datafaker</artifactId><version>2.4.2</version><scope>test</scope></dependency>
   </dependencies>
   <build>
     <plugins>
       <plugin><groupId>org.springframework.boot</groupId><artifactId>spring-boot-maven-plugin</artifactId></plugin>
     </plugins>
   </build>
+  <profiles>
+    <profile>
+      <id>benchmark</id>
+      <properties>
+        <groups>benchmark</groups>
+        <excludedGroups>none</excludedGroups>
+      </properties>
+    </profile>
+  </profiles>
 </project>

@@ -119,4 +119,18 @@ class LedgerConcurrencyTest {
         assertThrows(DataAccessException.class,
                 () -> repo.updateBalance(a.id(), new BigDecimal("-1.00")));
     }
+
+    @Test
+    void sameKeyWithDifferentPayload_isRejected() {
+        Account house = service.openSystemAccount("house", "USD");
+        Account a = fundedAccount(house, "1000.00");
+        Account b = service.openAccount("bob", "USD");
+        String key = "reuse-" + UUID.randomUUID();
+
+        service.transfer(new TransferRequest(key, a.id(), b.id(), new BigDecimal("100.00"), "first"));
+
+        assertThrows(IdempotencyKeyReuseException.class, () ->
+                service.transfer(new TransferRequest(key, a.id(), b.id(), new BigDecimal("200.00"), "second")));
+        assertEquals(0, balance(a.id()).compareTo(new BigDecimal("900")));
+    }
 }

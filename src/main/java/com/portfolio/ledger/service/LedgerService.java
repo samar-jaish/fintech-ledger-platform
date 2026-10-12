@@ -5,6 +5,7 @@ import com.portfolio.ledger.repository.LedgerRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -12,8 +13,11 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+/** Ledger operations using pessimistic row locking (SELECT ... FOR UPDATE). */
 @Service
 public class LedgerService {
+
+    private static final int MAX_STATEMENT_LIMIT = 1000;
 
     private final LedgerRepository repo;
 
@@ -36,9 +40,9 @@ public class LedgerService {
      */
     @Transactional
     public TransferResult transfer(TransferRequest req) {
-        Optional<UUID> newTx = repo.insertTransaction(req.idempotencyKey(), req.description());
+        Optional<UUID> newTx = repo.insertTransaction(req.idempotencyKey(), req.description(), req.fingerprint());
         if (newTx.isEmpty()) {
-            return new TransferResult(repo.findTransactionIdByKey(req.idempotencyKey()), true);
+            return replay(req);
         }
         UUID txId = newTx.get();
 
@@ -59,6 +63,34 @@ public class LedgerService {
         repo.updateBalance(from.id(), from.balance().subtract(req.amount()));
         repo.updateBalance(to.id(), to.balance().add(req.amount()));
         return new TransferResult(txId, false);
+    }
+
+    /** Most recent ledger entries for an account, newest first. */
+    @Transactional(readOnly = true)
+    public List<LedgerEntry> getStatement(UUID accountId, int limit) {
+        if (limit < 1 || limit > MAX_STATEMENT_LIMIT) {
+            throw new IllegalArgumentException("limit must be between 1 and " + MAX_STATEMENT_LIMIT);
+        }
+        return repo.findEntries(accountId, limit);
+    }
+
+    /** Compares cached balances with credits minus debits for every account. Empty means consistent. */
+    @Transactional(readOnly = true)
+    public List<BalanceMismatch> reconcile() {
+        return repo.findBalanceMismatches();
+    }
+
+    @Transactional(readOnly = true)
+    public List<BalanceMismatch> reconcile(Collection<UUID> accountIds) {
+        return repo.findBalanceMismatches(accountIds);
+    }
+
+    private TransferResult replay(TransferRequest req) {
+        StoredTransaction stored = repo.findTransactionByKey(req.idempotencyKey());
+        if (stored.requestHash() != null && !stored.requestHash().equals(req.fingerprint())) {
+            throw new IdempotencyKeyReuseException(req.idempotencyKey());
+        }
+        return new TransferResult(stored.id(), true);
     }
 
     private static Account require(Map<UUID, Account> accounts, UUID id) {

@@ -1,12 +1,12 @@
 package com.portfolio.ledger.repository;
 
-import com.portfolio.ledger.domain.Account;
-import com.portfolio.ledger.domain.Direction;
+import com.portfolio.ledger.domain.*;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -23,6 +23,31 @@ public class JdbcLedgerRepository implements LedgerRepository {
             rs.getString("currency"),
             rs.getBigDecimal("balance"),
             rs.getBoolean("allow_negative"));
+
+    private static final RowMapper<VersionedAccount> VERSIONED_MAPPER = (rs, i) ->
+            new VersionedAccount(ACCOUNT_MAPPER.mapRow(rs, i), rs.getLong("version"));
+
+    private static final RowMapper<LedgerEntry> ENTRY_MAPPER = (rs, i) -> new LedgerEntry(
+            rs.getLong("id"),
+            rs.getObject("transaction_id", UUID.class),
+            rs.getObject("account_id", UUID.class),
+            Direction.valueOf(rs.getString("direction")),
+            rs.getBigDecimal("amount"),
+            rs.getObject("created_at", OffsetDateTime.class).toInstant());
+
+    private static final RowMapper<BalanceMismatch> MISMATCH_MAPPER = (rs, i) -> new BalanceMismatch(
+            rs.getObject("id", UUID.class),
+            rs.getBigDecimal("cached"),
+            rs.getBigDecimal("computed"));
+
+    private static final String MISMATCH_SQL = """
+            SELECT a.id, a.balance AS cached,
+                   COALESCE(SUM(CASE e.direction WHEN 'CREDIT' THEN e.amount ELSE -e.amount END), 0) AS computed
+            FROM accounts a LEFT JOIN ledger_entries e ON e.account_id = a.id
+            %s
+            GROUP BY a.id, a.balance
+            HAVING a.balance <> COALESCE(SUM(CASE e.direction WHEN 'CREDIT' THEN e.amount ELSE -e.amount END), 0)
+            """;
 
     private final JdbcClient jdbc;
 
@@ -52,23 +77,31 @@ public class JdbcLedgerRepository implements LedgerRepository {
     }
 
     @Override
-    public Optional<UUID> insertTransaction(String idempotencyKey, String description) {
+    public List<VersionedAccount> findVersioned(Collection<UUID> ids) {
+        return jdbc.sql("SELECT " + ACCOUNT_COLS + ", version FROM accounts WHERE id IN (:ids)")
+                .param("ids", ids).query(VERSIONED_MAPPER).list();
+    }
+
+    @Override
+    public Optional<UUID> insertTransaction(String idempotencyKey, String description, String requestHash) {
         UUID id = UUID.randomUUID();
         // Concurrent duplicates block on the unique index until the first commits, then no-op.
         int rows = jdbc.sql("""
-                INSERT INTO ledger_transactions (id, idempotency_key, description)
-                VALUES (:id, :key, :desc)
+                INSERT INTO ledger_transactions (id, idempotency_key, description, request_hash)
+                VALUES (:id, :key, :desc, :hash)
                 ON CONFLICT (idempotency_key) DO NOTHING
                 """)
-                .param("id", id).param("key", idempotencyKey).param("desc", description)
+                .param("id", id).param("key", idempotencyKey).param("desc", description).param("hash", requestHash)
                 .update();
         return rows == 1 ? Optional.of(id) : Optional.empty();
     }
 
     @Override
-    public UUID findTransactionIdByKey(String idempotencyKey) {
-        return jdbc.sql("SELECT id FROM ledger_transactions WHERE idempotency_key = :key")
-                .param("key", idempotencyKey).query(UUID.class).single();
+    public StoredTransaction findTransactionByKey(String idempotencyKey) {
+        return jdbc.sql("SELECT id, request_hash FROM ledger_transactions WHERE idempotency_key = :key")
+                .param("key", idempotencyKey)
+                .query((rs, i) -> new StoredTransaction(rs.getObject("id", UUID.class), rs.getString("request_hash")))
+                .single();
     }
 
     @Override
@@ -81,7 +114,41 @@ public class JdbcLedgerRepository implements LedgerRepository {
 
     @Override
     public void updateBalance(UUID accountId, BigDecimal newBalance) {
-        jdbc.sql("UPDATE accounts SET balance = :bal WHERE id = :id")
+        jdbc.sql("UPDATE accounts SET balance = :bal, version = version + 1 WHERE id = :id")
                 .param("bal", newBalance).param("id", accountId).update();
+    }
+
+    @Override
+    public boolean updateBalanceIfVersion(UUID accountId, BigDecimal newBalance, long expectedVersion) {
+        int rows = jdbc.sql("UPDATE accounts SET balance = :bal, version = version + 1 WHERE id = :id AND version = :v")
+                .param("bal", newBalance).param("id", accountId).param("v", expectedVersion).update();
+        return rows == 1;
+    }
+
+    @Override
+    public List<LedgerEntry> findEntries(UUID accountId, int limit) {
+        return jdbc.sql("""
+                SELECT id, transaction_id, account_id, direction, amount, created_at
+                FROM ledger_entries
+                WHERE account_id = :account
+                ORDER BY created_at DESC, id DESC
+                LIMIT :limit
+                """)
+                .param("account", accountId).param("limit", limit)
+                .query(ENTRY_MAPPER).list();
+    }
+
+    @Override
+    public List<BalanceMismatch> findBalanceMismatches() {
+        return jdbc.sql(MISMATCH_SQL.formatted("")).query(MISMATCH_MAPPER).list();
+    }
+
+    @Override
+    public List<BalanceMismatch> findBalanceMismatches(Collection<UUID> accountIds) {
+        if (accountIds.isEmpty()) {
+            return List.of();
+        }
+        return jdbc.sql(MISMATCH_SQL.formatted("WHERE a.id IN (:ids)"))
+                .param("ids", accountIds).query(MISMATCH_MAPPER).list();
     }
 }
