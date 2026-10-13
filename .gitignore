@@ -7,3 +7,10 @@ target/
 LEARNING_NOTES.md
 internal/
 *.local.md
+
+# Local secrets (API keys): never commit these
+.env
+application-local.yml
+application-local.yaml
+application-local.properties
+*.secret

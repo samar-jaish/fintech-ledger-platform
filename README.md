@@ -16,6 +16,14 @@ hard part of payments software: moving money correctly under concurrency, retrie
 - Account statements (newest entries first) and a reconciliation query that detects drift between cached balances and ledger entries.
 - Versioned schema migrations with Flyway.
 
+## Market data and trading
+
+Prices come from a provider chosen by `MARKET_PROVIDER`: `simulated` (default, no network), `replay` (prices recorded in
+the database) or `live` (needs `FINNHUB_API_KEY` and `TWELVEDATA_API_KEY`; free keys). Every price shows its source.
+Trades are executed as ledger transfers and update holdings in the same transaction. Never commit API keys.
+
+Console demo: `mvn spring-boot:run -Dspring-boot.run.profiles=demo` (needs `docker compose up -d`).
+
 ## Tech stack
 
 Java 21, Spring Boot 3.5 (JDBC), PostgreSQL 16, Flyway, JUnit 5, Mockito, Testcontainers, Datafaker, Docker Compose, GitHub Actions.
