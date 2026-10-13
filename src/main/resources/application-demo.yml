@@ -1,0 +1,4 @@
+# The console demo runs and exits; it does not need the web server.
+spring:
+  main:
+    web-application-type: none

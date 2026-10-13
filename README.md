@@ -24,6 +24,36 @@ Trades are executed as ledger transfers and update holdings in the same transact
 
 Console demo: `mvn spring-boot:run -Dspring-boot.run.profiles=demo` (needs `docker compose up -d`).
 
+## REST API
+
+Start the database (`docker compose up -d`), then `mvn spring-boot:run`. The API listens on port 8080.
+
+| Method and path | Purpose |
+|---|---|
+| `POST /api/v1/accounts` | Open an account (`ownerName`, `currency`) |
+| `GET /api/v1/accounts/{id}` | Balance |
+| `POST /api/v1/accounts/{id}/deposits` | Simulated cash-in from the house account (USD, header `Idempotency-Key`) |
+| `POST /api/v1/transfers` | Move money between accounts (header `Idempotency-Key`) |
+| `GET /api/v1/accounts/{id}/statement?limit=50` | Ledger entries, newest first |
+| `POST /api/v1/trades` | Market order: `accountId`, `symbol`, `side` BUY or SELL, `quantity` (header `Idempotency-Key`) |
+| `GET /api/v1/accounts/{id}/portfolio` | Positions valued at current prices, with price source |
+| `GET /api/v1/accounts/{id}/trades?limit=50` | Trade history |
+| `GET /api/v1/reconciliation` | Cached balances versus ledger entries |
+
+Writes require an `Idempotency-Key` header. A repeated key returns the original result with 200 instead of 201.
+Errors use RFC 7807 (`application/problem+json`) with a stable `code`: 400 INVALID_REQUEST, 404 ACCOUNT_NOT_FOUND,
+409 IDEMPOTENCY_KEY_REUSED, 422 INSUFFICIENT_FUNDS or INSUFFICIENT_HOLDINGS, 503 MARKET_DATA_UNAVAILABLE.
+The API has no authentication yet; it is added next.
+
+Example (PowerShell):
+
+```
+$id = (Invoke-RestMethod -Method Post http://localhost:8080/api/v1/accounts -ContentType application/json -Body '{"ownerName":"Alice","currency":"USD"}').id
+Invoke-RestMethod -Method Post "http://localhost:8080/api/v1/accounts/$id/deposits" -ContentType application/json -Headers @{"Idempotency-Key"="d1"} -Body '{"amount":1000}'
+Invoke-RestMethod -Method Post http://localhost:8080/api/v1/trades -ContentType application/json -Headers @{"Idempotency-Key"="t1"} -Body "{`"accountId`":`"$id`",`"symbol`":`"AAPL`",`"side`":`"BUY`",`"quantity`":5}"
+Invoke-RestMethod "http://localhost:8080/api/v1/accounts/$id/portfolio"
+```
+
 ## Tech stack
 
 Java 21, Spring Boot 3.5 (JDBC), PostgreSQL 16, Flyway, JUnit 5, Mockito, Testcontainers, Datafaker, Docker Compose, GitHub Actions.

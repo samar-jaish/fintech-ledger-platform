@@ -65,6 +65,11 @@ public class LedgerService {
         return new TransferResult(txId, false);
     }
 
+    @Transactional(readOnly = true)
+    public Account getAccount(UUID accountId) {
+        return repo.findAccount(accountId).orElseThrow(() -> new AccountNotFoundException(accountId));
+    }
+
     /** Most recent ledger entries for an account, newest first. */
     @Transactional(readOnly = true)
     public List<LedgerEntry> getStatement(UUID accountId, int limit) {
