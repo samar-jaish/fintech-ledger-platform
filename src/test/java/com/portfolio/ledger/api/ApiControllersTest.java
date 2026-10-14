@@ -21,6 +21,9 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -44,14 +47,21 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** Web layer only: HTTP mapping, status codes and error format. Services are mocked. */
+/**
+ * Web layer only: HTTP mapping, status codes and error format. Services and the ownership check are mocked;
+ * every request runs as the signed-in user "alice" (see SecurityRulesTest and ApiIntegrationTest for security).
+ */
 @WebMvcTest({LedgerController.class, TradingController.class})
+@Import(SecurityConfig.class)
+@WithMockUser(username = "alice")
 class ApiControllersTest {
 
     @Autowired MockMvc mvc;
     @MockitoBean LedgerService ledger;
     @MockitoBean TradeService trading;
     @MockitoBean PortfolioService portfolio;
+    @MockitoBean AccountAccess access;
+    @MockitoBean JwtDecoder jwtDecoder;
 
     private static final UUID ID = UUID.randomUUID();
     private static final UUID OTHER = UUID.randomUUID();
@@ -62,7 +72,7 @@ class ApiControllersTest {
 
     @Test
     void createAccount_returns201_withLocation() throws Exception {
-        when(ledger.openAccount("Alice", "USD")).thenReturn(new Account(ID, "Alice", "USD", BigDecimal.ZERO, false));
+        when(ledger.openAccountFor("alice", "Alice", "USD")).thenReturn(new Account(ID, "Alice", "USD", BigDecimal.ZERO, false));
 
         mvc.perform(post("/api/v1/accounts").contentType(MediaType.APPLICATION_JSON)
                         .content(json("{'ownerName':'Alice','currency':'USD'}")))
@@ -204,6 +214,7 @@ class ApiControllersTest {
     }
 
     @Test
+    @WithMockUser(roles = "ADMIN")
     void reconciliation_reportsConsistent() throws Exception {
         when(ledger.reconcile()).thenReturn(List.of());
 

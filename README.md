@@ -43,16 +43,39 @@ Start the database (`docker compose up -d`), then `mvn spring-boot:run`. The API
 Writes require an `Idempotency-Key` header. A repeated key returns the original result with 200 instead of 201.
 Errors use RFC 7807 (`application/problem+json`) with a stable `code`: 400 INVALID_REQUEST, 404 ACCOUNT_NOT_FOUND,
 409 IDEMPOTENCY_KEY_REUSED, 422 INSUFFICIENT_FUNDS or INSUFFICIENT_HOLDINGS, 503 MARKET_DATA_UNAVAILABLE.
-The API has no authentication yet; it is added next.
+## Authentication and authorization
+
+The API is an OAuth2 resource server. Every request needs `Authorization: Bearer <JWT>` issued by Keycloak, which runs
+locally in Docker with a pre-loaded realm `ledger` (development settings and demo users only):
+
+| User | Password | Roles |
+|---|---|---|
+| alice | alice123 | USER |
+| bob | bob123 | USER |
+| admin1 | admin123 | USER, ADMIN |
+
+- A USER can use only the accounts they opened. Someone else's account answers 404, the same as a missing one.
+- `GET /api/v1/reconciliation` needs ADMIN. An ADMIN can read any account.
+- Missing or invalid token: 401. Wrong role: 403. Both use the same problem+json format as other errors.
+- Tokens are validated against `KEYCLOAK_ISSUER_URI` (default `http://localhost:8180/realms/ledger`).
+- Deposits are a simulated cash-in so the API can be tried end to end; a real system would not allow users to mint money.
+
+Run everything: `docker compose up -d` (wait about a minute for Keycloak), then `mvn spring-boot:run`.
 
 Example (PowerShell):
 
 ```
-$id = (Invoke-RestMethod -Method Post http://localhost:8080/api/v1/accounts -ContentType application/json -Body '{"ownerName":"Alice","currency":"USD"}').id
-Invoke-RestMethod -Method Post "http://localhost:8080/api/v1/accounts/$id/deposits" -ContentType application/json -Headers @{"Idempotency-Key"="d1"} -Body '{"amount":1000}'
-Invoke-RestMethod -Method Post http://localhost:8080/api/v1/trades -ContentType application/json -Headers @{"Idempotency-Key"="t1"} -Body "{`"accountId`":`"$id`",`"symbol`":`"AAPL`",`"side`":`"BUY`",`"quantity`":5}"
-Invoke-RestMethod "http://localhost:8080/api/v1/accounts/$id/portfolio"
+$tokenUrl = "http://localhost:8180/realms/ledger/protocol/openid-connect/token"
+$tok = (Invoke-RestMethod -Method Post $tokenUrl -Body @{grant_type="password"; client_id="ledger-api"; username="alice"; password="alice123"}).access_token
+$auth = @{Authorization="Bearer $tok"}
+$id = (Invoke-RestMethod -Method Post http://localhost:8080/api/v1/accounts -Headers $auth -ContentType application/json -Body '{"ownerName":"Alice","currency":"USD"}').id
+Invoke-RestMethod -Method Post "http://localhost:8080/api/v1/accounts/$id/deposits" -Headers ($auth + @{"Idempotency-Key"="d1"}) -ContentType application/json -Body '{"amount":1000}'
+$trade = @{accountId=$id; symbol="AAPL"; side="BUY"; quantity=5} | ConvertTo-Json
+Invoke-RestMethod -Method Post http://localhost:8080/api/v1/trades -Headers ($auth + @{"Idempotency-Key"="t1"}) -ContentType application/json -Body $trade
+Invoke-RestMethod "http://localhost:8080/api/v1/accounts/$id/portfolio" -Headers $auth
 ```
+
+Access tokens are short-lived (minutes by default); fetch a new one when you get 401.
 
 ## Tech stack
 

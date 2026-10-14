@@ -56,12 +56,24 @@ public class JdbcLedgerRepository implements LedgerRepository {
     }
 
     @Override
-    public Account createAccount(String ownerName, String currency, boolean allowNegative) {
+    public Account createAccount(String ownerName, String currency, boolean allowNegative, String ownerSubject) {
         UUID id = UUID.randomUUID();
-        jdbc.sql("INSERT INTO accounts (id, owner_name, currency, allow_negative) VALUES (:id, :owner, :cur, :neg)")
+        jdbc.sql("INSERT INTO accounts (id, owner_name, currency, allow_negative, owner_subject) "
+                        + "VALUES (:id, :owner, :cur, :neg, :sub)")
                 .param("id", id).param("owner", ownerName).param("cur", currency).param("neg", allowNegative)
+                .param("sub", ownerSubject)
                 .update();
         return findAccount(id).orElseThrow();
+    }
+
+    @Override
+    public boolean isOwnedBy(UUID accountId, String ownerSubject) {
+        if (ownerSubject == null) {
+            return false;
+        }
+        return jdbc.sql("SELECT EXISTS (SELECT 1 FROM accounts WHERE id = :id AND owner_subject = :sub)")
+                .param("id", accountId).param("sub", ownerSubject)
+                .query(Boolean.class).single();
     }
 
     @Override

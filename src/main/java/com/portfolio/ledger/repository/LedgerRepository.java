@@ -9,7 +9,15 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface LedgerRepository {
-    Account createAccount(String ownerName, String currency, boolean allowNegative);
+    /** System and test accounts have no owning user. */
+    default Account createAccount(String ownerName, String currency, boolean allowNegative) {
+        return createAccount(ownerName, currency, allowNegative, null);
+    }
+
+    /** ownerSubject is the identity provider's user id (JWT "sub"); null for accounts that belong to no user. */
+    Account createAccount(String ownerName, String currency, boolean allowNegative, String ownerSubject);
+
+    boolean isOwnedBy(UUID accountId, String ownerSubject);
 
     Optional<Account> findAccount(UUID id);
 

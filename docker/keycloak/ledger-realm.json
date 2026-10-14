@@ -1,0 +1,43 @@
+{
+  "realm": "ledger",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "roles": {
+    "realm": [
+      { "name": "USER", "description": "Regular customer" },
+      { "name": "ADMIN", "description": "Operator: may read any account and run reconciliation" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "ledger-api",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "description": "Local development only: password grant so tokens can be fetched with curl."
+    }
+  ],
+  "users": [
+    {
+      "username": "alice", "enabled": true, "emailVerified": true,
+      "email": "alice@example.com", "firstName": "Alice", "lastName": "Demo",
+      "credentials": [ { "type": "password", "value": "alice123", "temporary": false } ],
+      "realmRoles": [ "USER" ]
+    },
+    {
+      "username": "bob", "enabled": true, "emailVerified": true,
+      "email": "bob@example.com", "firstName": "Bob", "lastName": "Demo",
+      "credentials": [ { "type": "password", "value": "bob123", "temporary": false } ],
+      "realmRoles": [ "USER" ]
+    },
+    {
+      "username": "admin1", "enabled": true, "emailVerified": true,
+      "email": "admin1@example.com", "firstName": "Ada", "lastName": "Admin",
+      "credentials": [ { "type": "password", "value": "admin123", "temporary": false } ],
+      "realmRoles": [ "USER", "ADMIN" ]
+    }
+  ]
+}

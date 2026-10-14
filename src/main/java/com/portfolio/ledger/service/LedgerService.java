@@ -29,6 +29,19 @@ public class LedgerService {
         return repo.createAccount(ownerName, currency, false);
     }
 
+    /** An account owned by the user identified by the identity provider's subject id. */
+    public Account openAccountFor(String ownerSubject, String ownerName, String currency) {
+        if (ownerSubject == null || ownerSubject.isBlank()) {
+            throw new IllegalArgumentException("ownerSubject is required");
+        }
+        return repo.createAccount(ownerName, currency, false, ownerSubject);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean isOwnedBy(UUID accountId, String ownerSubject) {
+        return repo.isOwnedBy(accountId, ownerSubject);
+    }
+
     /** House account used as the counterparty for deposits/withdrawals. May go negative. */
     public Account openSystemAccount(String name, String currency) {
         return repo.createAccount(name, currency, true);

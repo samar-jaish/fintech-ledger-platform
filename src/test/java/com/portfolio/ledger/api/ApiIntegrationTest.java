@@ -8,9 +8,11 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -19,12 +21,16 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** The whole stack over HTTP (MockMvc) against a real Postgres, with the simulated market. */
+/**
+ * The whole stack over HTTP (MockMvc) against a real Postgres, with the simulated market.
+ * Each test uses its own users; the JWT post-processor stands in for a token already validated by Keycloak.
+ */
 @SpringBootTest
 @AutoConfigureMockMvc
 @Testcontainers
@@ -37,145 +43,201 @@ class ApiIntegrationTest {
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper mapper;
 
+    private static String newUser(String name) {
+        return name + "-" + UUID.randomUUID();
+    }
+
+    private static RequestPostProcessor as(String subject) {
+        return jwt().jwt(j -> j.subject(subject)).authorities(new SimpleGrantedAuthority("ROLE_USER"));
+    }
+
+    private static RequestPostProcessor admin() {
+        return jwt().jwt(j -> j.subject("admin-" + UUID.randomUUID()))
+                .authorities(new SimpleGrantedAuthority("ROLE_USER"), new SimpleGrantedAuthority("ROLE_ADMIN"));
+    }
+
     private static String uniqueKey() {
         return UUID.randomUUID().toString();
     }
 
-    private static MockHttpServletRequestBuilder json(MockHttpServletRequestBuilder b, String body) {
+    private static MockHttpServletRequestBuilder withBody(MockHttpServletRequestBuilder b, String body) {
         return b.contentType(MediaType.APPLICATION_JSON).content(body.replace('\'', '"'));
     }
 
-    private String createAccount(String owner) throws Exception {
-        MvcResult r = mvc.perform(json(post("/api/v1/accounts"), "{'ownerName':'" + owner + "','currency':'USD'}"))
+    private String createAccount(String subject) throws Exception {
+        MvcResult r = mvc.perform(withBody(post("/api/v1/accounts").with(as(subject)),
+                        "{'ownerName':'" + subject + "','currency':'USD'}"))
                 .andExpect(status().isCreated()).andReturn();
         return mapper.readTree(r.getResponse().getContentAsString()).get("id").asText();
     }
 
-    private void deposit(String accountId, String amount, String key) throws Exception {
-        mvc.perform(json(post("/api/v1/accounts/" + accountId + "/deposits").header("Idempotency-Key", key),
-                "{'amount':" + amount + "}"));
+    private void deposit(String subject, String accountId, String amount) throws Exception {
+        mvc.perform(withBody(post("/api/v1/accounts/" + accountId + "/deposits").with(as(subject))
+                        .header("Idempotency-Key", uniqueKey()), "{'amount':" + amount + "}"))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    void requestsWithoutAToken_are401() throws Exception {
+        mvc.perform(get("/api/v1/accounts/" + UUID.randomUUID())).andExpect(status().isUnauthorized());
+        mvc.perform(withBody(post("/api/v1/accounts"), "{'ownerName':'x','currency':'USD'}"))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
     void depositThenGetAccount_showsBalance_andReplayDoesNotDoubleCredit() throws Exception {
-        String id = createAccount("alice");
+        String alice = newUser("alice");
+        String id = createAccount(alice);
         String key = uniqueKey();
 
-        mvc.perform(json(post("/api/v1/accounts/" + id + "/deposits").header("Idempotency-Key", key), "{'amount':1000}"))
+        mvc.perform(withBody(post("/api/v1/accounts/" + id + "/deposits").with(as(alice))
+                        .header("Idempotency-Key", key), "{'amount':1000}"))
                 .andExpect(status().isCreated());
-        mvc.perform(json(post("/api/v1/accounts/" + id + "/deposits").header("Idempotency-Key", key), "{'amount':1000}"))
+        mvc.perform(withBody(post("/api/v1/accounts/" + id + "/deposits").with(as(alice))
+                        .header("Idempotency-Key", key), "{'amount':1000}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.replayed").value(true));
 
-        mvc.perform(get("/api/v1/accounts/" + id))
+        mvc.perform(get("/api/v1/accounts/" + id).with(as(alice)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.balance").value(1000.0));
     }
 
     @Test
-    void transferBetweenAccounts_updatesBothBalances_andStatementShowsEntries() throws Exception {
-        String alice = createAccount("alice");
-        String bob = createAccount("bob");
-        deposit(alice, "500", uniqueKey());
+    void transfer_fromOwnAccount_toAnotherUsersAccount_updatesBothBalances() throws Exception {
+        String alice = newUser("alice");
+        String bob = newUser("bob");
+        String aliceId = createAccount(alice);
+        String bobId = createAccount(bob);
+        deposit(alice, aliceId, "500");
 
-        mvc.perform(json(post("/api/v1/transfers").header("Idempotency-Key", uniqueKey()),
-                        "{'fromAccountId':'" + alice + "','toAccountId':'" + bob + "','amount':120.25}"))
+        mvc.perform(withBody(post("/api/v1/transfers").with(as(alice)).header("Idempotency-Key", uniqueKey()),
+                        "{'fromAccountId':'" + aliceId + "','toAccountId':'" + bobId + "','amount':120.25}"))
                 .andExpect(status().isCreated());
 
-        mvc.perform(get("/api/v1/accounts/" + alice)).andExpect(jsonPath("$.balance").value(379.75));
-        mvc.perform(get("/api/v1/accounts/" + bob)).andExpect(jsonPath("$.balance").value(120.25));
-        mvc.perform(get("/api/v1/accounts/" + bob + "/statement?limit=10"))
+        mvc.perform(get("/api/v1/accounts/" + aliceId).with(as(alice))).andExpect(jsonPath("$.balance").value(379.75));
+        mvc.perform(get("/api/v1/accounts/" + bobId).with(as(bob))).andExpect(jsonPath("$.balance").value(120.25));
+        mvc.perform(get("/api/v1/accounts/" + bobId + "/statement?limit=10").with(as(bob)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].direction").value("CREDIT"));
     }
 
     @Test
     void overdraft_returns422_andLeavesBalanceUnchanged() throws Exception {
-        String alice = createAccount("alice");
-        String bob = createAccount("bob");
-        deposit(alice, "10", uniqueKey());
+        String alice = newUser("alice");
+        String aliceId = createAccount(alice);
+        String bobId = createAccount(newUser("bob"));
+        deposit(alice, aliceId, "10");
 
-        mvc.perform(json(post("/api/v1/transfers").header("Idempotency-Key", uniqueKey()),
-                        "{'fromAccountId':'" + alice + "','toAccountId':'" + bob + "','amount':50}"))
+        mvc.perform(withBody(post("/api/v1/transfers").with(as(alice)).header("Idempotency-Key", uniqueKey()),
+                        "{'fromAccountId':'" + aliceId + "','toAccountId':'" + bobId + "','amount':50}"))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.code").value("INSUFFICIENT_FUNDS"));
 
-        mvc.perform(get("/api/v1/accounts/" + alice)).andExpect(jsonPath("$.balance").value(10.0));
+        mvc.perform(get("/api/v1/accounts/" + aliceId).with(as(alice))).andExpect(jsonPath("$.balance").value(10.0));
     }
 
     @Test
     void sameKeyDifferentAmount_returns409() throws Exception {
-        String alice = createAccount("alice");
-        String bob = createAccount("bob");
-        deposit(alice, "500", uniqueKey());
+        String alice = newUser("alice");
+        String aliceId = createAccount(alice);
+        String bobId = createAccount(newUser("bob"));
+        deposit(alice, aliceId, "500");
         String key = uniqueKey();
 
-        mvc.perform(json(post("/api/v1/transfers").header("Idempotency-Key", key),
-                "{'fromAccountId':'" + alice + "','toAccountId':'" + bob + "','amount':10}")).andExpect(status().isCreated());
-        mvc.perform(json(post("/api/v1/transfers").header("Idempotency-Key", key),
-                        "{'fromAccountId':'" + alice + "','toAccountId':'" + bob + "','amount':20}"))
+        mvc.perform(withBody(post("/api/v1/transfers").with(as(alice)).header("Idempotency-Key", key),
+                "{'fromAccountId':'" + aliceId + "','toAccountId':'" + bobId + "','amount':10}")).andExpect(status().isCreated());
+        mvc.perform(withBody(post("/api/v1/transfers").with(as(alice)).header("Idempotency-Key", key),
+                        "{'fromAccountId':'" + aliceId + "','toAccountId':'" + bobId + "','amount':20}"))
                 .andExpect(status().isConflict());
     }
 
     @Test
-    void unknownAccount_returns404_forGetDepositAndStatement() throws Exception {
-        String missing = UUID.randomUUID().toString();
-        mvc.perform(get("/api/v1/accounts/" + missing)).andExpect(status().isNotFound());
-        mvc.perform(get("/api/v1/accounts/" + missing + "/statement")).andExpect(status().isNotFound());
-        mvc.perform(json(post("/api/v1/accounts/" + missing + "/deposits").header("Idempotency-Key", uniqueKey()),
-                "{'amount':5}")).andExpect(status().isNotFound());
+    void someoneElsesAccount_looksLikeItDoesNotExist() throws Exception {
+        String alice = newUser("alice");
+        String mallory = newUser("mallory");
+        String aliceId = createAccount(alice);
+        deposit(alice, aliceId, "1000");
+        String malloryId = createAccount(mallory);
+
+        mvc.perform(get("/api/v1/accounts/" + aliceId).with(as(mallory))).andExpect(status().isNotFound());
+        mvc.perform(get("/api/v1/accounts/" + aliceId + "/statement").with(as(mallory))).andExpect(status().isNotFound());
+        mvc.perform(get("/api/v1/accounts/" + aliceId + "/portfolio").with(as(mallory))).andExpect(status().isNotFound());
+        mvc.perform(get("/api/v1/accounts/" + aliceId + "/trades").with(as(mallory))).andExpect(status().isNotFound());
+        mvc.perform(withBody(post("/api/v1/accounts/" + aliceId + "/deposits").with(as(mallory))
+                .header("Idempotency-Key", uniqueKey()), "{'amount':5}")).andExpect(status().isNotFound());
+        mvc.perform(withBody(post("/api/v1/transfers").with(as(mallory)).header("Idempotency-Key", uniqueKey()),
+                "{'fromAccountId':'" + aliceId + "','toAccountId':'" + malloryId + "','amount':100}"))
+                .andExpect(status().isNotFound());
+        mvc.perform(withBody(post("/api/v1/trades").with(as(mallory)).header("Idempotency-Key", uniqueKey()),
+                "{'accountId':'" + aliceId + "','symbol':'AAPL','side':'BUY','quantity':1}"))
+                .andExpect(status().isNotFound());
+
+        mvc.perform(get("/api/v1/accounts/" + aliceId).with(as(alice))).andExpect(jsonPath("$.balance").value(1000.0));
+    }
+
+    @Test
+    void admin_canReadAnyAccount_andUnknownAccountsAre404() throws Exception {
+        String alice = newUser("alice");
+        String aliceId = createAccount(alice);
+
+        mvc.perform(get("/api/v1/accounts/" + aliceId).with(admin())).andExpect(status().isOk());
+        mvc.perform(get("/api/v1/accounts/" + UUID.randomUUID()).with(admin())).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void reconciliation_isAdminOnly_andConsistentAfterActivity() throws Exception {
+        String alice = newUser("alice");
+        deposit(alice, createAccount(alice), "250");
+
+        mvc.perform(get("/api/v1/reconciliation").with(as(alice))).andExpect(status().isForbidden());
+        mvc.perform(get("/api/v1/reconciliation").with(admin()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.consistent").value(true));
     }
 
     @Test
     void tradeFlow_buyThenPortfolio_thenSellTooMuchIsRejected() throws Exception {
-        String id = createAccount("trader");
-        deposit(id, "100000", uniqueKey());
+        String trader = newUser("trader");
+        String id = createAccount(trader);
+        deposit(trader, id, "100000");
 
-        mvc.perform(json(post("/api/v1/trades").header("Idempotency-Key", uniqueKey()),
+        mvc.perform(withBody(post("/api/v1/trades").with(as(trader)).header("Idempotency-Key", uniqueKey()),
                         "{'accountId':'" + id + "','symbol':'AAPL','side':'BUY','quantity':10}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.priceSource").value("simulated"));
 
-        MvcResult portfolio = mvc.perform(get("/api/v1/accounts/" + id + "/portfolio"))
+        MvcResult portfolio = mvc.perform(get("/api/v1/accounts/" + id + "/portfolio").with(as(trader)))
                 .andExpect(status().isOk()).andReturn();
         JsonNode p = mapper.readTree(portfolio.getResponse().getContentAsString());
         assertTrue(p.get("complete").asBoolean());
         assertEquals(1, p.get("positions").size());
         assertEquals("AAPL", p.get("positions").get(0).get("symbol").asText());
 
-        mvc.perform(json(post("/api/v1/trades").header("Idempotency-Key", uniqueKey()),
+        mvc.perform(withBody(post("/api/v1/trades").with(as(trader)).header("Idempotency-Key", uniqueKey()),
                         "{'accountId':'" + id + "','symbol':'AAPL','side':'SELL','quantity':50}"))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.code").value("INSUFFICIENT_HOLDINGS"));
 
-        mvc.perform(get("/api/v1/accounts/" + id + "/trades"))
+        mvc.perform(get("/api/v1/accounts/" + id + "/trades").with(as(trader)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1));
     }
 
     @Test
     void tradeReplay_returns200_andSameTradeId() throws Exception {
-        String id = createAccount("trader");
-        deposit(id, "100000", uniqueKey());
+        String trader = newUser("trader");
+        String id = createAccount(trader);
+        deposit(trader, id, "100000");
         String key = uniqueKey();
         String body = "{'accountId':'" + id + "','symbol':'MSFT','side':'BUY','quantity':1}";
 
-        MvcResult first = mvc.perform(json(post("/api/v1/trades").header("Idempotency-Key", key), body))
+        MvcResult first = mvc.perform(withBody(post("/api/v1/trades").with(as(trader)).header("Idempotency-Key", key), body))
                 .andExpect(status().isCreated()).andReturn();
-        MvcResult second = mvc.perform(json(post("/api/v1/trades").header("Idempotency-Key", key), body))
+        MvcResult second = mvc.perform(withBody(post("/api/v1/trades").with(as(trader)).header("Idempotency-Key", key), body))
                 .andExpect(status().isOk()).andReturn();
 
         assertEquals(mapper.readTree(first.getResponse().getContentAsString()).get("id"),
                 mapper.readTree(second.getResponse().getContentAsString()).get("id"));
-    }
-
-    @Test
-    void reconciliation_isConsistentAfterActivity() throws Exception {
-        String id = createAccount("alice");
-        deposit(id, "250", uniqueKey());
-
-        mvc.perform(get("/api/v1/reconciliation"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.consistent").value(true));
     }
 }

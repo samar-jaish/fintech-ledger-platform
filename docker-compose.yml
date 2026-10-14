@@ -7,5 +7,16 @@ services:
       POSTGRES_PASSWORD: ledger
     ports: ["5432:5432"]
     volumes: [pgdata:/var/lib/postgresql/data]
+
+  # Local identity provider. Development settings and demo users only: never use this configuration in production.
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    command: ["start-dev", "--import-realm", "--http-port=8180"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+    ports: ["8180:8180"]
+    volumes: ["./docker/keycloak:/opt/keycloak/data/import:ro"]
+
 volumes:
   pgdata:

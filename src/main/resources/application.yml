@@ -4,6 +4,13 @@ spring:
     username: ledger
     password: ledger
 
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # Tokens are validated against Keycloak (docker compose). Discovery happens on the first request, not at startup.
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8180/realms/ledger}
+
 market:
   # simulated: seeded fake prices, no network (default)
   # replay:    prices recorded in our own database (real numbers, offline, repeatable)
