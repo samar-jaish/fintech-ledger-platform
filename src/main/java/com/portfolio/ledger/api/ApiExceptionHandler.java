@@ -1,5 +1,7 @@
 package com.portfolio.ledger.api;
 
+import com.portfolio.ledger.batch.NightlyCloseConflictException;
+import com.portfolio.ledger.batch.NightlyCloseFailedException;
 import com.portfolio.ledger.domain.AccountNotFoundException;
 import com.portfolio.ledger.domain.IdempotencyKeyReuseException;
 import com.portfolio.ledger.domain.InsufficientFundsException;
@@ -38,6 +40,18 @@ class ApiExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(IdempotencyKeyReuseException.class)
     ResponseEntity<ProblemDetail> conflict(IdempotencyKeyReuseException e) {
         return problem(HttpStatus.CONFLICT, "IDEMPOTENCY_KEY_REUSED", e.getMessage());
+    }
+
+    @ExceptionHandler(NightlyCloseConflictException.class)
+    ResponseEntity<ProblemDetail> closeConflict(NightlyCloseConflictException e) {
+        return problem(HttpStatus.CONFLICT, "NIGHTLY_CLOSE_CONFLICT", e.getMessage());
+    }
+
+    @ExceptionHandler(NightlyCloseFailedException.class)
+    ResponseEntity<ProblemDetail> closeFailed(NightlyCloseFailedException e) {
+        log.error("Nightly close failed", e);
+        return problem(HttpStatus.INTERNAL_SERVER_ERROR, "NIGHTLY_CLOSE_FAILED",
+                "The nightly close did not complete. Job execution " + e.jobExecutionId() + "; see the server log.");
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

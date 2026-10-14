@@ -4,6 +4,11 @@ spring:
     username: ledger
     password: ledger
 
+  batch:
+    job:
+      enabled: false            # jobs run when triggered (API or schedule), never at startup
+    jdbc:
+      initialize-schema: always # Spring Batch's own metadata tables (BATCH_*); existing tables are left alone
   security:
     oauth2:
       resourceserver:
@@ -28,3 +33,9 @@ market:
     twelvedata:
       base-url: https://api.twelvedata.com
       api-key: ${TWELVEDATA_API_KEY:}
+
+ledger:
+  nightly-close:
+    # Cron (UTC) for closing the previous day automatically. "-" disables it; the admin API still works.
+    # Example: "0 30 0 * * *" runs at 00:30 UTC every day.
+    cron: ${NIGHTLY_CLOSE_CRON:-}

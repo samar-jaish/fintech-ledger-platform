@@ -55,7 +55,7 @@ locally in Docker with a pre-loaded realm `ledger` (development settings and dem
 | admin1 | admin123 | USER, ADMIN |
 
 - A USER can use only the accounts they opened. Someone else's account answers 404, the same as a missing one.
-- `GET /api/v1/reconciliation` needs ADMIN. An ADMIN can read any account.
+- `GET /api/v1/reconciliation` and everything under `/api/v1/admin/` need ADMIN. An ADMIN can read any account.
 - Missing or invalid token: 401. Wrong role: 403. Both use the same problem+json format as other errors.
 - Tokens are validated against `KEYCLOAK_ISSUER_URI` (default `http://localhost:8180/realms/ledger`).
 - Deposits are a simulated cash-in so the API can be tried end to end; a real system would not allow users to mint money.
@@ -76,6 +76,23 @@ Invoke-RestMethod "http://localhost:8080/api/v1/accounts/$id/portfolio" -Headers
 ```
 
 Access tokens are short-lived (minutes by default); fetch a new one when you get 401.
+
+## Nightly close (Spring Batch)
+
+A batch job closes each UTC day: for every account it rebuilds the closing balance from the ledger entries, compares
+the cached balance with the sum of all entries, and stores one row per account per day in `daily_balances`.
+
+| Endpoint | Purpose |
+|---|---|
+| `POST /api/v1/admin/nightly-close` | ADMIN only. Body `{"businessDate":"2025-06-30","rerun":false}`. Runs the job and returns the result |
+| `GET /api/v1/accounts/{id}/daily-balances?limit=30` | End-of-day history for an account (owner or ADMIN), newest first |
+
+- Closing a date that is already closed returns 409 `NIGHTLY_CLOSE_CONFLICT`; send `"rerun":true` to close it again.
+- If any account fails reconciliation the job still completes, with exit code `COMPLETED_WITH_MISMATCHES`.
+- Automatic run: set `NIGHTLY_CLOSE_CRON` (for example `0 30 0 * * *`, UTC) to close the previous day. Off by default.
+- Design notes: [ADR 0008](docs/adr/0008-nightly-close-with-spring-batch.md).
+
+A Postman collection for the API is in [postman/](postman).
 
 ## Tech stack
 
@@ -139,6 +156,7 @@ src/main/java/com/portfolio/ledger
   domain/        records, enums and exceptions (no persistence code)
   repository/    LedgerRepository interface and JDBC implementation
   service/       LedgerService (pessimistic), OptimisticLedgerService
+  batch/         nightly close job (Spring Batch), daily balance snapshots
 src/main/resources/db/migration   Flyway migrations
 src/test/java                     unit, integration and benchmark tests
 ```
