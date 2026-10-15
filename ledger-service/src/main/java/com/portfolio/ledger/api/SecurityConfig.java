@@ -22,7 +22,9 @@ import java.util.Map;
  * The API is an OAuth2 resource server: every request carries a bearer JWT issued by Keycloak, which this service
  * validates (signature, issuer, expiry). There are no sessions and no CSRF tokens because no cookies are used.
  *
- * Roles come from Keycloak's realm roles (claim realm_access.roles) and become ROLE_USER / ROLE_ADMIN.
+ * Roles come from Keycloak's realm roles (claim realm_access.roles) and become ROLE_USER / ROLE_ADMIN / ROLE_SERVICE.
+ * SERVICE is held by other services (for example trading-service) that call /api/v1/internal/** with a token
+ * they obtained for themselves (client credentials), not on behalf of a user.
  * Who may touch which account is decided separately, in AccountAccess.
  */
 @Configuration
@@ -37,6 +39,7 @@ class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.GET, "/api/v1/reconciliation").hasRole("ADMIN")
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/v1/internal/**").hasRole("SERVICE")
                         .requestMatchers("/api/v1/**").authenticated()
                         .anyRequest().denyAll())
                 .oauth2ResourceServer(oauth -> oauth

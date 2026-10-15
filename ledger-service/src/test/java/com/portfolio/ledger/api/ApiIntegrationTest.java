@@ -1,6 +1,5 @@
 package com.portfolio.ledger.api;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,8 +18,6 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -162,15 +159,10 @@ class ApiIntegrationTest {
 
         mvc.perform(get("/api/v1/accounts/" + aliceId).with(as(mallory))).andExpect(status().isNotFound());
         mvc.perform(get("/api/v1/accounts/" + aliceId + "/statement").with(as(mallory))).andExpect(status().isNotFound());
-        mvc.perform(get("/api/v1/accounts/" + aliceId + "/portfolio").with(as(mallory))).andExpect(status().isNotFound());
-        mvc.perform(get("/api/v1/accounts/" + aliceId + "/trades").with(as(mallory))).andExpect(status().isNotFound());
         mvc.perform(withBody(post("/api/v1/accounts/" + aliceId + "/deposits").with(as(mallory))
                 .header("Idempotency-Key", uniqueKey()), "{'amount':5}")).andExpect(status().isNotFound());
         mvc.perform(withBody(post("/api/v1/transfers").with(as(mallory)).header("Idempotency-Key", uniqueKey()),
                 "{'fromAccountId':'" + aliceId + "','toAccountId':'" + malloryId + "','amount':100}"))
-                .andExpect(status().isNotFound());
-        mvc.perform(withBody(post("/api/v1/trades").with(as(mallory)).header("Idempotency-Key", uniqueKey()),
-                "{'accountId':'" + aliceId + "','symbol':'AAPL','side':'BUY','quantity':1}"))
                 .andExpect(status().isNotFound());
 
         mvc.perform(get("/api/v1/accounts/" + aliceId).with(as(alice))).andExpect(jsonPath("$.balance").value(1000.0));
@@ -196,48 +188,55 @@ class ApiIntegrationTest {
                 .andExpect(jsonPath("$.consistent").value(true));
     }
 
-    @Test
-    void tradeFlow_buyThenPortfolio_thenSellTooMuchIsRejected() throws Exception {
-        String trader = newUser("trader");
-        String id = createAccount(trader);
-        deposit(trader, id, "100000");
-
-        mvc.perform(withBody(post("/api/v1/trades").with(as(trader)).header("Idempotency-Key", uniqueKey()),
-                        "{'accountId':'" + id + "','symbol':'AAPL','side':'BUY','quantity':10}"))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.priceSource").value("simulated"));
-
-        MvcResult portfolio = mvc.perform(get("/api/v1/accounts/" + id + "/portfolio").with(as(trader)))
-                .andExpect(status().isOk()).andReturn();
-        JsonNode p = mapper.readTree(portfolio.getResponse().getContentAsString());
-        assertTrue(p.get("complete").asBoolean());
-        assertEquals(1, p.get("positions").size());
-        assertEquals("AAPL", p.get("positions").get(0).get("symbol").asText());
-
-        mvc.perform(withBody(post("/api/v1/trades").with(as(trader)).header("Idempotency-Key", uniqueKey()),
-                        "{'accountId':'" + id + "','symbol':'AAPL','side':'SELL','quantity':50}"))
-                .andExpect(status().isUnprocessableEntity())
-                .andExpect(jsonPath("$.code").value("INSUFFICIENT_HOLDINGS"));
-
-        mvc.perform(get("/api/v1/accounts/" + id + "/trades").with(as(trader)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1));
+    private static RequestPostProcessor service() {
+        return jwt().jwt(j -> j.subject("service-" + UUID.randomUUID()))
+                .authorities(new SimpleGrantedAuthority("ROLE_SERVICE"));
     }
 
     @Test
-    void tradeReplay_returns200_andSameTradeId() throws Exception {
+    void internalEndpoints_needTheServiceRole() throws Exception {
+        String alice = newUser("alice");
+        String id = createAccount(alice);
+        String body = "{'fromAccountId':'" + id + "','toAccountId':'" + UUID.randomUUID() + "','amount':1}";
+
+        mvc.perform(withBody(post("/api/v1/internal/transfers").with(as(alice)).header("Idempotency-Key", uniqueKey()), body))
+                .andExpect(status().isForbidden());
+        mvc.perform(withBody(post("/api/v1/internal/transfers").with(admin()).header("Idempotency-Key", uniqueKey()), body))
+                .andExpect(status().isForbidden());
+        mvc.perform(withBody(post("/api/v1/internal/exchange-accounts").with(as(alice)), "{'currency':'USD'}"))
+                .andExpect(status().isForbidden());
+        mvc.perform(withBody(post("/api/v1/internal/exchange-accounts"), "{'currency':'USD'}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void service_canMoveMoneyBothWaysWithTheExchange_idempotently() throws Exception {
         String trader = newUser("trader");
         String id = createAccount(trader);
-        deposit(trader, id, "100000");
-        String key = uniqueKey();
-        String body = "{'accountId':'" + id + "','symbol':'MSFT','side':'BUY','quantity':1}";
+        deposit(trader, id, "1000");
 
-        MvcResult first = mvc.perform(withBody(post("/api/v1/trades").with(as(trader)).header("Idempotency-Key", key), body))
-                .andExpect(status().isCreated()).andReturn();
-        MvcResult second = mvc.perform(withBody(post("/api/v1/trades").with(as(trader)).header("Idempotency-Key", key), body))
+        MvcResult ex = mvc.perform(withBody(post("/api/v1/internal/exchange-accounts").with(service()), "{'currency':'USD'}"))
                 .andExpect(status().isOk()).andReturn();
+        String exchangeId = mapper.readTree(ex.getResponse().getContentAsString()).get("id").asText();
+        mvc.perform(withBody(post("/api/v1/internal/exchange-accounts").with(service()), "{'currency':'USD'}"))
+                .andExpect(jsonPath("$.id").value(exchangeId));   // same account every time
 
-        assertEquals(mapper.readTree(first.getResponse().getContentAsString()).get("id"),
-                mapper.readTree(second.getResponse().getContentAsString()).get("id"));
+        String key = "trade:" + UUID.randomUUID();
+        String buy = "{'fromAccountId':'" + id + "','toAccountId':'" + exchangeId + "','amount':300,'description':'BUY 3 X'}";
+        mvc.perform(withBody(post("/api/v1/internal/transfers").with(service()).header("Idempotency-Key", key), buy))
+                .andExpect(status().isCreated());
+        mvc.perform(withBody(post("/api/v1/internal/transfers").with(service()).header("Idempotency-Key", key), buy))
+                .andExpect(status().isOk());   // replay: not applied twice
+        mvc.perform(get("/api/v1/accounts/" + id).with(as(trader))).andExpect(jsonPath("$.balance").value(700.0));
+
+        String sell = "{'fromAccountId':'" + exchangeId + "','toAccountId':'" + id + "','amount':100,'description':'SELL 1 X'}";
+        mvc.perform(withBody(post("/api/v1/internal/transfers").with(service()).header("Idempotency-Key", "trade:" + UUID.randomUUID()), sell))
+                .andExpect(status().isCreated());
+        mvc.perform(get("/api/v1/accounts/" + id).with(as(trader))).andExpect(jsonPath("$.balance").value(800.0));
+
+        String tooMuch = "{'fromAccountId':'" + id + "','toAccountId':'" + exchangeId + "','amount':999999}";
+        mvc.perform(withBody(post("/api/v1/internal/transfers").with(service()).header("Idempotency-Key", uniqueKey()), tooMuch))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("INSUFFICIENT_FUNDS"));
     }
 }

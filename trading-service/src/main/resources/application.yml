@@ -1,0 +1,50 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: trading-service
+  datasource:
+    # Its own database (created by docker/postgres/init-databases.sql), never the ledger's.
+    url: ${TRADING_DB_URL:jdbc:postgresql://localhost:5432/trading}
+    username: ${TRADING_DB_USER:ledger}
+    password: ${TRADING_DB_PASSWORD:ledger}
+  http:
+    client:
+      connect-timeout: 2s       # applies to the ledger client: fail fast, the saga retries later
+      read-timeout: 5s
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8180/realms/ledger}
+
+ledger-client:
+  base-url: ${LEDGER_BASE_URL:http://localhost:8080}
+  token-url: ${KEYCLOAK_TOKEN_URL:http://localhost:8180/realms/ledger/protocol/openid-connect/token}
+  client-id: trading-service
+  client-secret: ${TRADING_CLIENT_SECRET:trading-service-secret}   # local demo secret; real deployments inject it
+
+trading:
+  recovery:
+    initial-delay-ms: 10000
+    interval-ms: 10000
+    min-age-ms: 15000           # a pending trade is retried only after it has been pending this long
+
+market:
+  # simulated: seeded fake prices, no network (default)
+  # replay:    prices recorded in our own database (real numbers, offline, repeatable)
+  # live:      real vendors (needs FINNHUB_API_KEY and TWELVEDATA_API_KEY)
+  # Switch without editing this file:  set MARKET_PROVIDER=live
+  provider: ${MARKET_PROVIDER:simulated}
+  simulated:
+    seed: 42
+    latency-ms: 0
+    failure-rate: 0.0
+  live:
+    finnhub:
+      base-url: https://finnhub.io/api/v1
+      api-key: ${FINNHUB_API_KEY:}
+    twelvedata:
+      base-url: https://api.twelvedata.com
+      api-key: ${TWELVEDATA_API_KEY:}

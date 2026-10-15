@@ -5,8 +5,6 @@ import com.portfolio.ledger.batch.NightlyCloseFailedException;
 import com.portfolio.ledger.domain.AccountNotFoundException;
 import com.portfolio.ledger.domain.IdempotencyKeyReuseException;
 import com.portfolio.ledger.domain.InsufficientFundsException;
-import com.portfolio.ledger.market.MarketDataException;
-import com.portfolio.ledger.trading.InsufficientHoldingsException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -31,10 +29,9 @@ class ApiExceptionHandler extends ResponseEntityExceptionHandler {
         return problem(HttpStatus.NOT_FOUND, "ACCOUNT_NOT_FOUND", e.getMessage());
     }
 
-    @ExceptionHandler({InsufficientFundsException.class, InsufficientHoldingsException.class})
-    ResponseEntity<ProblemDetail> unprocessable(RuntimeException e) {
-        String code = e instanceof InsufficientFundsException ? "INSUFFICIENT_FUNDS" : "INSUFFICIENT_HOLDINGS";
-        return problem(HttpStatus.UNPROCESSABLE_ENTITY, code, e.getMessage());
+    @ExceptionHandler(InsufficientFundsException.class)
+    ResponseEntity<ProblemDetail> unprocessable(InsufficientFundsException e) {
+        return problem(HttpStatus.UNPROCESSABLE_ENTITY, "INSUFFICIENT_FUNDS", e.getMessage());
     }
 
     @ExceptionHandler(IdempotencyKeyReuseException.class)
@@ -57,13 +54,6 @@ class ApiExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     ResponseEntity<ProblemDetail> badRequest(IllegalArgumentException e) {
         return problem(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", e.getMessage());
-    }
-
-    @ExceptionHandler(MarketDataException.class)
-    ResponseEntity<ProblemDetail> marketDown(MarketDataException e) {
-        log.warn("Market data unavailable: {}", e.getMessage());
-        return problem(HttpStatus.SERVICE_UNAVAILABLE, "MARKET_DATA_UNAVAILABLE",
-                "Market data is temporarily unavailable. Retry later.");
     }
 
     @ExceptionHandler(Exception.class)

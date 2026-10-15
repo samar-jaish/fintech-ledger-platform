@@ -24,24 +24,6 @@ spring:
           # Tokens are validated against Keycloak (docker compose). Discovery happens on the first request, not at startup.
           issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8180/realms/ledger}
 
-market:
-  # simulated: seeded fake prices, no network (default)
-  # replay:    prices recorded in our own database (real numbers, offline, repeatable)
-  # live:      real vendors (needs FINNHUB_API_KEY and TWELVEDATA_API_KEY)
-  # Switch without editing this file:  set MARKET_PROVIDER=live
-  provider: ${MARKET_PROVIDER:simulated}
-  simulated:
-    seed: 42
-    latency-ms: 0
-    failure-rate: 0.0
-  live:
-    finnhub:
-      base-url: https://finnhub.io/api/v1
-      api-key: ${FINNHUB_API_KEY:}
-    twelvedata:
-      base-url: https://api.twelvedata.com
-      api-key: ${TWELVEDATA_API_KEY:}
-
 ledger:
   nightly-close:
     # Cron (UTC) for closing the previous day automatically. "-" disables it; the admin API still works.

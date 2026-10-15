@@ -9,7 +9,7 @@
 | 2c | Spring Batch nightly close with end-of-day balances and reconciliation (done) | Spring Batch |
 | 3a | Transactional outbox and Kafka events (done) | Kafka (KRaft) in Docker |
 | 3b-1 | Maven modules; notification service with its own database and dead-letter topic (done) | Maven multi-module, Kafka |
-| 3b-2 | Trading service split out, trade saga with compensation | Kafka, service-to-service auth |
+| 3b-2 | Trading service split out, trade saga with compensation, service-to-service auth (done) | OAuth2 client credentials (Keycloak) |
 | 3c | Redis caching and Resilience4j (retry, circuit breaker) | Redis in Docker |
 | 4 | Docker, K8s, CI/CD, Azure deploy, observability | kind/k3s locally; GitHub Actions; Azure Container Apps + Postgres Flexible Server (free allowances); GHCR; Prometheus/Grafana/Jaeger locally; Bicep or Terraform |
 | 5 | Lucene+Tika, RAG, Presidio PII masking | pgvector, Ollama (local LLM), Presidio sidecar |

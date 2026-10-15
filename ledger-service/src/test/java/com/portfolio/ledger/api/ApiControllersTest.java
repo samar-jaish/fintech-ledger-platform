@@ -7,16 +7,7 @@ import com.portfolio.ledger.domain.InsufficientFundsException;
 import com.portfolio.ledger.domain.SystemAccounts;
 import com.portfolio.ledger.domain.TransferRequest;
 import com.portfolio.ledger.domain.TransferResult;
-import com.portfolio.ledger.market.MarketDataException;
 import com.portfolio.ledger.service.LedgerService;
-import com.portfolio.ledger.trading.InsufficientHoldingsException;
-import com.portfolio.ledger.trading.Portfolio;
-import com.portfolio.ledger.trading.PortfolioService;
-import com.portfolio.ledger.trading.Side;
-import com.portfolio.ledger.trading.Trade;
-import com.portfolio.ledger.trading.TradeRequest;
-import com.portfolio.ledger.trading.TradeResult;
-import com.portfolio.ledger.trading.TradeService;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,15 +42,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Web layer only: HTTP mapping, status codes and error format. Services and the ownership check are mocked;
  * every request runs as the signed-in user "alice" (see SecurityRulesTest and ApiIntegrationTest for security).
  */
-@WebMvcTest({LedgerController.class, TradingController.class})
+@WebMvcTest(LedgerController.class)
 @Import(SecurityConfig.class)
 @WithMockUser(username = "alice")
 class ApiControllersTest {
 
     @Autowired MockMvc mvc;
     @MockitoBean LedgerService ledger;
-    @MockitoBean TradeService trading;
-    @MockitoBean PortfolioService portfolio;
     @MockitoBean AccountAccess access;
     @MockitoBean JwtDecoder jwtDecoder;
 
@@ -225,50 +214,6 @@ class ApiControllersTest {
     }
 
     @Test
-    void trade_returns201_withPriceAndSource() throws Exception {
-        Trade trade = new Trade(UUID.randomUUID(), "t1", "hash", ID, "AAPL", Side.BUY, new BigDecimal("2"),
-                new BigDecimal("100.0000"), new BigDecimal("200.0000"), "USD", "simulated", Instant.now(), Instant.now());
-        when(trading.execute(any(TradeRequest.class))).thenReturn(new TradeResult(trade, false));
-
-        mvc.perform(post("/api/v1/trades").header("Idempotency-Key", "t1").contentType(MediaType.APPLICATION_JSON)
-                        .content(json("{'accountId':'" + ID + "','symbol':'aapl','side':'BUY','quantity':2}")))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.symbol").value("AAPL"))
-                .andExpect(jsonPath("$.priceSource").value("simulated"))
-                .andExpect(jsonPath("$.requestHash").doesNotExist())
-                .andExpect(jsonPath("$.replayed").value(false));
-    }
-
-    @Test
-    void trade_withUnknownSide_returns400() throws Exception {
-        mvc.perform(post("/api/v1/trades").header("Idempotency-Key", "t1").contentType(MediaType.APPLICATION_JSON)
-                        .content(json("{'accountId':'" + ID + "','symbol':'AAPL','side':'HOLD','quantity':2}")))
-                .andExpect(status().isBadRequest());
-        verifyNoInteractions(trading);
-    }
-
-    @Test
-    void trade_insufficientHoldings_returns422() throws Exception {
-        when(trading.execute(any())).thenThrow(new InsufficientHoldingsException(ID, "AAPL"));
-
-        mvc.perform(post("/api/v1/trades").header("Idempotency-Key", "t1").contentType(MediaType.APPLICATION_JSON)
-                        .content(json("{'accountId':'" + ID + "','symbol':'AAPL','side':'SELL','quantity':2}")))
-                .andExpect(status().isUnprocessableEntity())
-                .andExpect(jsonPath("$.code").value("INSUFFICIENT_HOLDINGS"));
-    }
-
-    @Test
-    void trade_whenMarketDown_returns503_withoutLeakingDetails() throws Exception {
-        when(trading.execute(any())).thenThrow(new MarketDataException("vendor said: token=SECRET"));
-
-        mvc.perform(post("/api/v1/trades").header("Idempotency-Key", "t1").contentType(MediaType.APPLICATION_JSON)
-                        .content(json("{'accountId':'" + ID + "','symbol':'AAPL','side':'BUY','quantity':2}")))
-                .andExpect(status().isServiceUnavailable())
-                .andExpect(jsonPath("$.code").value("MARKET_DATA_UNAVAILABLE"))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("SECRET"))));
-    }
-
-    @Test
     void unexpectedError_returns500_withoutDetails() throws Exception {
         when(ledger.getAccount(ID)).thenThrow(new IllegalStateException("db password is hunter2"));
 
@@ -276,24 +221,5 @@ class ApiControllersTest {
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.code").value("INTERNAL_ERROR"))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("hunter2"))));
-    }
-
-    @Test
-    void portfolio_returnsValuedPositions() throws Exception {
-        when(portfolio.getPortfolio(ID)).thenReturn(new Portfolio(ID, "USD", new BigDecimal("800.0000"), List.of(),
-                BigDecimal.ZERO, BigDecimal.ZERO, new BigDecimal("800.0000"), true));
-
-        mvc.perform(get("/api/v1/accounts/" + ID + "/portfolio"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.complete").value(true))
-                .andExpect(jsonPath("$.cash").value(800.0));
-    }
-
-    @Test
-    void trades_list_returnsNewestFirstFromService() throws Exception {
-        when(portfolio.getTrades(eq(ID), anyInt())).thenReturn(List.of());
-
-        mvc.perform(get("/api/v1/accounts/" + ID + "/trades")).andExpect(status().isOk());
-        verify(portfolio).getTrades(ID, 50);
     }
 }

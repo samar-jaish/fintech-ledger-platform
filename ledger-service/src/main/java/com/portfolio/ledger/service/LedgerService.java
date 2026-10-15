@@ -44,6 +44,11 @@ public class LedgerService {
     }
 
     /** House account used as the counterparty for deposits/withdrawals. May go negative. */
+    @Transactional
+    public Account findOrCreateSystemAccount(String name, String currency) {
+        return repo.findOrCreateSystemAccount(name, currency);
+    }
+
     public Account openSystemAccount(String name, String currency) {
         return repo.createAccount(name, currency, true);
     }

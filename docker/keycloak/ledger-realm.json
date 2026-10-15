@@ -5,8 +5,18 @@
   "registrationAllowed": false,
   "roles": {
     "realm": [
-      { "name": "USER", "description": "Regular customer" },
-      { "name": "ADMIN", "description": "Operator: may read any account and run reconciliation" }
+      {
+        "name": "USER",
+        "description": "Regular customer"
+      },
+      {
+        "name": "ADMIN",
+        "description": "Operator: may read any account and run reconciliation"
+      },
+      {
+        "name": "SERVICE",
+        "description": "Another service calling internal endpoints (client credentials), never a person"
+      }
     ]
   },
   "clients": [
@@ -18,26 +28,82 @@
       "standardFlowEnabled": false,
       "directAccessGrantsEnabled": true,
       "description": "Local development only: password grant so tokens can be fetched with curl."
+    },
+    {
+      "clientId": "trading-service",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "trading-service-secret",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "description": "Local development only: trading-service logs in as itself (client credentials) to call the ledger's internal endpoints."
     }
   ],
   "users": [
     {
-      "username": "alice", "enabled": true, "emailVerified": true,
-      "email": "alice@example.com", "firstName": "Alice", "lastName": "Demo",
-      "credentials": [ { "type": "password", "value": "alice123", "temporary": false } ],
-      "realmRoles": [ "USER" ]
+      "username": "alice",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "alice@example.com",
+      "firstName": "Alice",
+      "lastName": "Demo",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "alice123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "USER"
+      ]
     },
     {
-      "username": "bob", "enabled": true, "emailVerified": true,
-      "email": "bob@example.com", "firstName": "Bob", "lastName": "Demo",
-      "credentials": [ { "type": "password", "value": "bob123", "temporary": false } ],
-      "realmRoles": [ "USER" ]
+      "username": "bob",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "bob@example.com",
+      "firstName": "Bob",
+      "lastName": "Demo",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "bob123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "USER"
+      ]
     },
     {
-      "username": "admin1", "enabled": true, "emailVerified": true,
-      "email": "admin1@example.com", "firstName": "Ada", "lastName": "Admin",
-      "credentials": [ { "type": "password", "value": "admin123", "temporary": false } ],
-      "realmRoles": [ "USER", "ADMIN" ]
+      "username": "admin1",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "admin1@example.com",
+      "firstName": "Ada",
+      "lastName": "Admin",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "USER",
+        "ADMIN"
+      ]
+    },
+    {
+      "username": "service-account-trading-service",
+      "enabled": true,
+      "serviceAccountClientId": "trading-service",
+      "realmRoles": [
+        "SERVICE"
+      ]
     }
   ]
 }

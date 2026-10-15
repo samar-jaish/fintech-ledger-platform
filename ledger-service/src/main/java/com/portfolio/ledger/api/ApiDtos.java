@@ -3,12 +3,8 @@ package com.portfolio.ledger.api;
 import com.portfolio.ledger.domain.Account;
 import com.portfolio.ledger.domain.BalanceMismatch;
 import com.portfolio.ledger.domain.TransferRequest;
-import com.portfolio.ledger.trading.Side;
-import com.portfolio.ledger.trading.Trade;
-import com.portfolio.ledger.trading.TradeRequest;
 
 import java.math.BigDecimal;
-import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -20,6 +16,13 @@ final class ApiDtos {
     private static final Pattern CURRENCY = Pattern.compile("[A-Z]{3}");
 
     private ApiDtos() { }
+
+    /** Throws IllegalArgumentException (HTTP 400) unless the value is a 3-letter upper-case currency code. */
+    static final java.util.function.Consumer<String> CURRENCY_CHECK = currency -> {
+        if (currency == null || !CURRENCY.matcher(currency).matches()) {
+            throw new IllegalArgumentException("currency must be a 3-letter upper-case code, e.g. USD");
+        }
+    };
 
     record CreateAccountBody(String ownerName, String currency) {
         void validate() {
@@ -41,13 +44,6 @@ final class ApiDtos {
         }
     }
 
-    record TradeBody(UUID accountId, String symbol, Side side, BigDecimal quantity) {
-        TradeRequest toRequest(String idempotencyKey) {
-            return new TradeRequest(key(idempotencyKey), required(accountId, "accountId"), required(symbol, "symbol"),
-                    required(side, "side"), required(quantity, "quantity"));
-        }
-    }
-
     record AccountResponse(UUID id, String ownerName, String currency, BigDecimal balance) {
         static AccountResponse from(Account a) {
             return new AccountResponse(a.id(), a.ownerName(), a.currency(), a.balance());
@@ -55,15 +51,6 @@ final class ApiDtos {
     }
 
     record TransferResponse(UUID transactionId, boolean replayed) { }
-
-    record TradeResponse(UUID id, UUID accountId, String symbol, Side side, BigDecimal quantity, BigDecimal price,
-                         BigDecimal notional, String currency, String priceSource, Instant priceAsOf,
-                         Instant executedAt, boolean replayed) {
-        static TradeResponse from(Trade t, boolean replayed) {
-            return new TradeResponse(t.id(), t.accountId(), t.symbol(), t.side(), t.quantity(), t.price(),
-                    t.notional(), t.currency(), t.priceSource(), t.priceAsOf(), t.executedAt(), replayed);
-        }
-    }
 
     record ReconciliationResponse(boolean consistent, List<BalanceMismatch> mismatches) { }
 

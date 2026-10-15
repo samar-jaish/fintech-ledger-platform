@@ -15,14 +15,21 @@ hard part of payments software: moving money correctly under concurrency, retrie
 - Defence in depth: balance, amount and direction rules are enforced by database constraints, and a trigger makes the ledger immutable.
 - Account statements (newest entries first) and a reconciliation query that detects drift between cached balances and ledger entries.
 - Versioned schema migrations with Flyway.
+- Three services (ledger, trading, notification) communicating over REST and Kafka, each with its own database; trades run as a saga with compensation.
 
 ## Market data and trading
 
 Prices come from a provider chosen by `MARKET_PROVIDER`: `simulated` (default, no network), `replay` (prices recorded in
 the database) or `live` (needs `FINNHUB_API_KEY` and `TWELVEDATA_API_KEY`; free keys). Every price shows its source.
-Trades are executed as ledger transfers and update holdings in the same transaction. Never commit API keys.
+Never commit API keys.
 
-Console demo: `mvn -pl ledger-service spring-boot:run -Dspring-boot.run.profiles=demo` (needs `docker compose up -d`).
+Trading is its own service (`trading-service`, port 8082, its own database). Cash lives in the ledger service and shares
+in the trading service, so a trade is a saga: the trade is saved as PENDING, the ledger is asked to move the cash (safe to
+repeat, thanks to idempotency keys), and then the position is updated and the trade marked COMPLETED. If the ledger refuses,
+the trade is REJECTED and any reserved shares are returned. If the ledger cannot be reached, the trade stays PENDING and is
+retried automatically. Design notes: [ADR 0011](docs/adr/0011-trade-saga-and-service-to-service-auth.md).
+
+Console demo of the ledger: `mvn -pl ledger-service spring-boot:run -Dspring-boot.run.profiles=demo` (needs `docker compose up -d`).
 
 ## REST API
 
@@ -35,9 +42,17 @@ Start the database (`docker compose up -d`), then `mvn -pl ledger-service spring
 | `POST /api/v1/accounts/{id}/deposits` | Simulated cash-in from the house account (USD, header `Idempotency-Key`) |
 | `POST /api/v1/transfers` | Move money between accounts (header `Idempotency-Key`) |
 | `GET /api/v1/accounts/{id}/statement?limit=50` | Ledger entries, newest first |
-| `POST /api/v1/trades` | Market order: `accountId`, `symbol`, `side` BUY or SELL, `quantity` (header `Idempotency-Key`) |
-| `GET /api/v1/accounts/{id}/portfolio` | Positions valued at current prices, with price source |
-| `GET /api/v1/accounts/{id}/trades?limit=50` | Trade history |
+
+Trading endpoints are on the trading service (port 8082), same tokens and error format:
+
+| Method and path | Purpose |
+|---|---|
+| `POST /api/v1/trades` | Market order: `accountId`, `symbol`, `side` BUY or SELL, `quantity` (header `Idempotency-Key`). 201 completed, 200 replay, 202 pending (ledger not confirmed yet), 422 rejected |
+| `GET /api/v1/accounts/{id}/portfolio` | Positions valued at current prices, with price source and number of pending trades |
+| `GET /api/v1/accounts/{id}/trades?limit=50` | Trade history with status |
+
+The ledger also has `/api/v1/internal/**` endpoints for other services (role `SERVICE`, obtained through the OAuth2
+client credentials flow). They are not for end users.
 | `GET /api/v1/reconciliation` | Cached balances versus ledger entries |
 
 Writes require an `Idempotency-Key` header. A repeated key returns the original result with 200 instead of 201.
@@ -71,8 +86,8 @@ $auth = @{Authorization="Bearer $tok"}
 $id = (Invoke-RestMethod -Method Post http://localhost:8080/api/v1/accounts -Headers $auth -ContentType application/json -Body '{"ownerName":"Alice","currency":"USD"}').id
 Invoke-RestMethod -Method Post "http://localhost:8080/api/v1/accounts/$id/deposits" -Headers ($auth + @{"Idempotency-Key"="d1"}) -ContentType application/json -Body '{"amount":1000}'
 $trade = @{accountId=$id; symbol="AAPL"; side="BUY"; quantity=5} | ConvertTo-Json
-Invoke-RestMethod -Method Post http://localhost:8080/api/v1/trades -Headers ($auth + @{"Idempotency-Key"="t1"}) -ContentType application/json -Body $trade
-Invoke-RestMethod "http://localhost:8080/api/v1/accounts/$id/portfolio" -Headers $auth
+Invoke-RestMethod -Method Post http://localhost:8082/api/v1/trades -Headers ($auth + @{"Idempotency-Key"="t1"}) -ContentType application/json -Body $trade
+Invoke-RestMethod "http://localhost:8082/api/v1/accounts/$id/portfolio" -Headers $auth
 ```
 
 Access tokens are short-lived (minutes by default); fetch a new one when you get 401.
@@ -120,9 +135,10 @@ Java 21, Spring Boot 3.5 (JDBC), PostgreSQL 16, Flyway, JUnit 5, Mockito, Testco
 Prerequisites: JDK 21, Maven 3.9+, and Docker.
 
 ```bash
-docker compose up -d     # PostgreSQL (databases ledger and notifications), Keycloak, Kafka
+docker compose up -d     # PostgreSQL (databases ledger, notifications, trading), Keycloak, Kafka
 mvn verify               # builds every module: unit tests (Mockito) and integration tests (Testcontainers)
 mvn -pl ledger-service spring-boot:run        # ledger API, applies migrations on startup
+mvn -pl trading-service spring-boot:run       # trades and portfolio (needs the ledger running)
 mvn -pl notification-service spring-boot:run  # optional: consumes transfer events
 ```
 
@@ -180,6 +196,7 @@ ledger-service/            ledger, REST API, security, nightly close, outbox pub
     outbox/        transfer events: outbox table and Kafka relay
   src/main/resources/db/migration   Flyway migrations
   src/test/java                     unit, integration and benchmark tests
+trading-service/           trades (saga), holdings, market data, portfolio; own database
 notification-service/      Kafka consumer with its own database
 docker/                    Keycloak realm, Postgres init script
 docs/                      ADRs and roadmap

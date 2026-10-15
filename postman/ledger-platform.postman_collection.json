@@ -12,6 +12,10 @@
     {
       "key": "keycloakUrl",
       "value": "http://localhost:8180"
+    },
+    {
+      "key": "tradingUrl",
+      "value": "http://localhost:8082"
     }
   ],
   "item": [
@@ -630,7 +634,7 @@
       ]
     },
     {
-      "name": "2. Trading (simulated prices)",
+      "name": "2. Trading (trading-service on port 8082, simulated prices)",
       "item": [
         {
           "name": "Buy 10 AAPL (alice)",
@@ -647,7 +651,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/trades"
+              "raw": "{{tradingUrl}}/api/v1/trades"
             },
             "body": {
               "mode": "raw",
@@ -702,7 +706,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/trades"
+              "raw": "{{tradingUrl}}/api/v1/trades"
             },
             "body": {
               "mode": "raw",
@@ -738,7 +742,7 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/accounts/{{aliceAccountId}}/portfolio"
+              "raw": "{{tradingUrl}}/api/v1/accounts/{{aliceAccountId}}/portfolio"
             },
             "auth": {
               "type": "bearer",
@@ -779,7 +783,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/trades"
+              "raw": "{{tradingUrl}}/api/v1/trades"
             },
             "body": {
               "mode": "raw",
@@ -815,7 +819,7 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/accounts/{{aliceAccountId}}/trades"
+              "raw": "{{tradingUrl}}/api/v1/accounts/{{aliceAccountId}}/trades"
             },
             "auth": {
               "type": "bearer",
@@ -856,7 +860,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/trades"
+              "raw": "{{tradingUrl}}/api/v1/trades"
             },
             "body": {
               "mode": "raw",

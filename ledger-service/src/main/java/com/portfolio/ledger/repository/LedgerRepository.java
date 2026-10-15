@@ -32,6 +32,12 @@ public interface LedgerRepository {
 
     StoredTransaction findTransactionByKey(String idempotencyKey);
 
+    /**
+     * Finds the oldest overdraft-allowed account with this name and currency, or creates it. Concurrent first calls
+     * are serialized by a transaction-scoped advisory lock, so only one account is created. Call inside a transaction.
+     */
+    Account findOrCreateSystemAccount(String name, String currency);
+
     /** Adds an event to the outbox. Must run in the same transaction as the change it describes. */
     void insertOutboxEvent(String aggregateType, UUID aggregateId, String eventType, String payloadJson);
 

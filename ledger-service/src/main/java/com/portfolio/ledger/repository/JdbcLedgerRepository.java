@@ -173,4 +173,23 @@ public class JdbcLedgerRepository implements LedgerRepository {
                 .param("type", aggregateType).param("aggId", aggregateId)
                 .param("event", eventType).param("payload", payloadJson).update();
     }
+
+    /** Arbitrary constant; all callers of findOrCreateSystemAccount share this one lock. */
+    private static final long SYSTEM_ACCOUNT_LOCK_KEY = 7_001L;
+
+    @Override
+    public Account findOrCreateSystemAccount(String name, String currency) {
+        jdbc.sql("SELECT 1 FROM (SELECT pg_advisory_xact_lock(:key)) AS locked")
+                .param("key", SYSTEM_ACCOUNT_LOCK_KEY).query(Integer.class).single();
+        Optional<Account> existing = jdbc.sql("SELECT " + ACCOUNT_COLS + " FROM accounts WHERE owner_name = :name AND currency = :currency "
+                + "AND allow_negative ORDER BY created_at, id LIMIT 1").param("name", name).param("currency", currency).query(ACCOUNT_MAPPER).optional();
+        if (existing.isPresent()) {
+            return existing.get();
+        }
+        UUID id = UUID.randomUUID();
+        jdbc.sql("INSERT INTO accounts (id, owner_name, currency, allow_negative) VALUES (:id, :name, :currency, TRUE)")
+                .param("id", id).param("name", name).param("currency", currency).update();
+        return jdbc.sql("SELECT " + ACCOUNT_COLS + " FROM accounts WHERE id = :id")
+                .param("id", id).query(ACCOUNT_MAPPER).single();
+    }
 }

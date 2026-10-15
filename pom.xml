@@ -16,6 +16,7 @@
   <modules>
     <module>ledger-service</module>
     <module>notification-service</module>
+    <module>trading-service</module>
   </modules>
   <properties>
     <java.version>21</java.version>
