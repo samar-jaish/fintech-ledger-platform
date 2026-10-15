@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: notification-service
+  main:
+    web-application-type: none      # no HTTP: this service only reacts to Kafka messages
+  datasource:
+    # Its own database (created by docker/postgres/init-notifications.sql), never the ledger's.
+    url: ${NOTIFICATIONS_DB_URL:jdbc:postgresql://localhost:5432/notifications}
+    username: ${NOTIFICATIONS_DB_USER:ledger}
+    password: ${NOTIFICATIONS_DB_PASSWORD:ledger}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: notification-service
+      auto-offset-reset: earliest
+    producer:
+      acks: all                     # used only to publish poison messages to the dead-letter topic
+
+notification:
+  topic: ledger.transfers
+  retry:
+    interval-ms: 1000
+    attempts: 3                     # retries before a message is sent to the dead-letter topic

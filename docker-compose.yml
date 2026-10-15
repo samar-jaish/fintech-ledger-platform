@@ -6,7 +6,10 @@ services:
       POSTGRES_USER: ledger
       POSTGRES_PASSWORD: ledger
     ports: ["5432:5432"]
-    volumes: [pgdata:/var/lib/postgresql/data]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # creates the notifications database on first start (needs a fresh volume: docker compose down -v)
+      - ./docker/postgres/init-notifications.sql:/docker-entrypoint-initdb.d/init-notifications.sql:ro
 
   # Local identity provider. Development settings and demo users only: never use this configuration in production.
   keycloak:

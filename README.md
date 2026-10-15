@@ -22,11 +22,11 @@ Prices come from a provider chosen by `MARKET_PROVIDER`: `simulated` (default, n
 the database) or `live` (needs `FINNHUB_API_KEY` and `TWELVEDATA_API_KEY`; free keys). Every price shows its source.
 Trades are executed as ledger transfers and update holdings in the same transaction. Never commit API keys.
 
-Console demo: `mvn spring-boot:run -Dspring-boot.run.profiles=demo` (needs `docker compose up -d`).
+Console demo: `mvn -pl ledger-service spring-boot:run -Dspring-boot.run.profiles=demo` (needs `docker compose up -d`).
 
 ## REST API
 
-Start the database (`docker compose up -d`), then `mvn spring-boot:run`. The API listens on port 8080.
+Start the database (`docker compose up -d`), then `mvn -pl ledger-service spring-boot:run`. The API listens on port 8080.
 
 | Method and path | Purpose |
 |---|---|
@@ -60,7 +60,7 @@ locally in Docker with a pre-loaded realm `ledger` (development settings and dem
 - Tokens are validated against `KEYCLOAK_ISSUER_URI` (default `http://localhost:8180/realms/ledger`).
 - Deposits are a simulated cash-in so the API can be tried end to end; a real system would not allow users to mint money.
 
-Run everything: `docker compose up -d` (wait about a minute for Keycloak), then `mvn spring-boot:run`.
+Run everything: `docker compose up -d` (wait about a minute for Keycloak), then `mvn -pl ledger-service spring-boot:run`.
 
 Example (PowerShell):
 
@@ -98,12 +98,18 @@ A Postman collection for the API is in [postman/](postman).
 
 Every committed transfer also writes a `TransferCompleted` event to an `outbox_events` table in the same database
 transaction. A relay publishes those rows to the Kafka topic `ledger.transfers`, so no event is lost if the process
-dies after the commit, and none is sent for a transfer that rolled back. Delivery is at-least-once, and the example
-consumer ignores duplicates. Design notes: [ADR 0009](docs/adr/0009-transactional-outbox-and-kafka.md).
+dies after the commit, and none is sent for a transfer that rolled back. Delivery is at-least-once.
+
+The `notification-service` module is a separate application with its own database. It consumes the events, records
+one notification per event (ignoring duplicate deliveries), and sends messages it cannot read to a dead-letter topic
+(`ledger.transfers.DLT`) after a few retries. Design notes: [ADR 0009](docs/adr/0009-transactional-outbox-and-kafka.md),
+[ADR 0010](docs/adr/0010-separate-notification-service.md).
 
 Run it: `docker compose up -d`, then start the app with `OUTBOX_RELAY_ENABLED=true`
-(PowerShell: `$env:OUTBOX_RELAY_ENABLED="true"; mvn spring-boot:run`). Make a transfer or deposit and the log shows
-`NOTIFY: transfer event ...`. The relay is off by default so the app runs without Kafka.
+(PowerShell: `$env:OUTBOX_RELAY_ENABLED="true"; mvn -pl ledger-service spring-boot:run`) and, in a second terminal, the notification service
+(`mvn -pl notification-service spring-boot:run`). Make a transfer or deposit: the ledger log shows the relay
+publishing, and the notification service log shows `NOTIFY: Transfer of ...`. The relay is off by default so the
+ledger runs without Kafka.
 
 ## Tech stack
 
@@ -114,9 +120,10 @@ Java 21, Spring Boot 3.5 (JDBC), PostgreSQL 16, Flyway, JUnit 5, Mockito, Testco
 Prerequisites: JDK 21, Maven 3.9+, and Docker.
 
 ```bash
-docker compose up -d     # PostgreSQL on localhost:5432 (database/user/password: ledger)
-mvn verify               # unit tests (Mockito) and integration tests (Testcontainers)
-mvn spring-boot:run      # applies migrations on startup
+docker compose up -d     # PostgreSQL (databases ledger and notifications), Keycloak, Kafka
+mvn verify               # builds every module: unit tests (Mockito) and integration tests (Testcontainers)
+mvn -pl ledger-service spring-boot:run        # ledger API, applies migrations on startup
+mvn -pl notification-service spring-boot:run  # optional: consumes transfer events
 ```
 
 ## Testing
@@ -130,8 +137,8 @@ mvn spring-boot:run      # applies migrations on startup
 An opt-in benchmark seeds synthetic data (Datafaker) and compares the two locking strategies, plus statement query latency and its query plan:
 
 ```bash
-mvn test -Pbenchmark
-mvn test -Pbenchmark -Dbench.seedTransactions=200000 -Dbench.threads=4   # smaller run
+mvn test -Pbenchmark -pl ledger-service
+mvn test -Pbenchmark -pl ledger-service -Dbench.seedTransactions=200000 -Dbench.threads=4   # smaller run
 ```
 
 Sample results (8 threads, PostgreSQL 16 in Docker on a laptop, 1M ledger entries, single run):
@@ -163,12 +170,17 @@ Architecture decisions are recorded in [docs/adr](docs/adr). The planned evoluti
 ## Project structure
 
 ```
-src/main/java/com/portfolio/ledger
-  domain/        records, enums and exceptions (no persistence code)
-  repository/    LedgerRepository interface and JDBC implementation
-  service/       LedgerService (pessimistic), OptimisticLedgerService
-  outbox/        transfer events: outbox table, Kafka relay, example consumer
-  batch/         nightly close job (Spring Batch), daily balance snapshots
-src/main/resources/db/migration   Flyway migrations
-src/test/java                     unit, integration and benchmark tests
+ledger-service/            ledger, REST API, security, nightly close, outbox publisher
+  src/main/java/com/portfolio/ledger
+    domain/        records, enums and exceptions (no persistence code)
+    repository/    LedgerRepository interface and JDBC implementation
+    service/       LedgerService (pessimistic), OptimisticLedgerService
+    api/           controllers, security, error handling
+    batch/         nightly close job (Spring Batch), daily balance snapshots
+    outbox/        transfer events: outbox table and Kafka relay
+  src/main/resources/db/migration   Flyway migrations
+  src/test/java                     unit, integration and benchmark tests
+notification-service/      Kafka consumer with its own database
+docker/                    Keycloak realm, Postgres init script
+docs/                      ADRs and roadmap
 ```
