@@ -9,6 +9,14 @@ spring:
       enabled: false            # jobs run when triggered (API or schedule), never at startup
     jdbc:
       initialize-schema: always # Spring Batch's own metadata tables (BATCH_*); existing tables are left alone
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      acks: all                 # wait for the broker to confirm before we mark an event published
+      properties:
+        enable.idempotence: true
+    consumer:
+      auto-offset-reset: earliest
   security:
     oauth2:
       resourceserver:
@@ -39,3 +47,11 @@ ledger:
     # Cron (UTC) for closing the previous day automatically. "-" disables it; the admin API still works.
     # Example: "0 30 0 * * *" runs at 00:30 UTC every day.
     cron: ${NIGHTLY_CLOSE_CRON:-}
+  outbox:
+    topic: ledger.transfers
+    consumer-group: ledger-notifications
+    relay:
+      # Needs Kafka (docker compose up -d). Off by default so the app starts without a broker.
+      enabled: ${OUTBOX_RELAY_ENABLED:false}
+      interval-ms: 500
+      batch-size: 100

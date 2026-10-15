@@ -94,6 +94,17 @@ the cached balance with the sum of all entries, and stores one row per account p
 
 A Postman collection for the API is in [postman/](postman).
 
+## Events (outbox and Kafka)
+
+Every committed transfer also writes a `TransferCompleted` event to an `outbox_events` table in the same database
+transaction. A relay publishes those rows to the Kafka topic `ledger.transfers`, so no event is lost if the process
+dies after the commit, and none is sent for a transfer that rolled back. Delivery is at-least-once, and the example
+consumer ignores duplicates. Design notes: [ADR 0009](docs/adr/0009-transactional-outbox-and-kafka.md).
+
+Run it: `docker compose up -d`, then start the app with `OUTBOX_RELAY_ENABLED=true`
+(PowerShell: `$env:OUTBOX_RELAY_ENABLED="true"; mvn spring-boot:run`). Make a transfer or deposit and the log shows
+`NOTIFY: transfer event ...`. The relay is off by default so the app runs without Kafka.
+
 ## Tech stack
 
 Java 21, Spring Boot 3.5 (JDBC), PostgreSQL 16, Flyway, JUnit 5, Mockito, Testcontainers, Datafaker, Docker Compose, GitHub Actions.
@@ -156,6 +167,7 @@ src/main/java/com/portfolio/ledger
   domain/        records, enums and exceptions (no persistence code)
   repository/    LedgerRepository interface and JDBC implementation
   service/       LedgerService (pessimistic), OptimisticLedgerService
+  outbox/        transfer events: outbox table, Kafka relay, example consumer
   batch/         nightly close job (Spring Batch), daily balance snapshots
 src/main/resources/db/migration   Flyway migrations
 src/test/java                     unit, integration and benchmark tests

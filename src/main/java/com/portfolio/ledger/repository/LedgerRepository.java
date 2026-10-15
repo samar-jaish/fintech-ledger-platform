@@ -32,6 +32,9 @@ public interface LedgerRepository {
 
     StoredTransaction findTransactionByKey(String idempotencyKey);
 
+    /** Adds an event to the outbox. Must run in the same transaction as the change it describes. */
+    void insertOutboxEvent(String aggregateType, UUID aggregateId, String eventType, String payloadJson);
+
     void insertEntry(UUID transactionId, UUID accountId, Direction direction, BigDecimal amount);
 
     /** Unconditional update (caller must hold the row lock). Also bumps the version. */

@@ -1,6 +1,7 @@
 package com.portfolio.ledger.service;
 
 import com.portfolio.ledger.domain.*;
+import com.portfolio.ledger.outbox.TransferCompleted;
 import com.portfolio.ledger.repository.LedgerRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -75,6 +76,8 @@ public class LedgerService {
         repo.insertEntry(txId, to.id(), Direction.CREDIT, req.amount());
         repo.updateBalance(from.id(), from.balance().subtract(req.amount()));
         repo.updateBalance(to.id(), to.balance().add(req.amount()));
+        repo.insertOutboxEvent(TransferCompleted.AGGREGATE, txId, TransferCompleted.TYPE,
+                TransferCompleted.of(txId, req).toJson());
         return new TransferResult(txId, false);
     }
 

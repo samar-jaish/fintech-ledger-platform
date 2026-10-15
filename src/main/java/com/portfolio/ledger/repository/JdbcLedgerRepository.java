@@ -163,4 +163,14 @@ public class JdbcLedgerRepository implements LedgerRepository {
         return jdbc.sql(MISMATCH_SQL.formatted("WHERE a.id IN (:ids)"))
                 .param("ids", accountIds).query(MISMATCH_MAPPER).list();
     }
+
+    @Override
+    public void insertOutboxEvent(String aggregateType, UUID aggregateId, String eventType, String payloadJson) {
+        jdbc.sql("""
+                INSERT INTO outbox_events (aggregate_type, aggregate_id, event_type, payload)
+                VALUES (:type, :aggId, :event, CAST(:payload AS jsonb))
+                """)
+                .param("type", aggregateType).param("aggId", aggregateId)
+                .param("event", eventType).param("payload", payloadJson).update();
+    }
 }

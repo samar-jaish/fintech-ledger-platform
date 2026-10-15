@@ -1,0 +1,350 @@
+2026-10-15T12:21:00.103+05:30  INFO 79332 --- [main] com.portfolio.ledger.LedgerApplication   : Starting LedgerApplication using Java 21.0.12.1 with PID 79332 (C:\workspace\fintech-ledger-platform\target\classes started by sjaish in C:\workspace\fintech-ledger-platform)
+2026-10-15T12:21:00.111+05:30  INFO 79332 --- [main] com.portfolio.ledger.LedgerApplication   : No active profile set, falling back to 1 default profile: "default"
+2026-10-15T12:21:08.042+05:30  INFO 79332 --- [main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 8080 (http)
+2026-10-15T12:21:08.096+05:30  INFO 79332 --- [main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-10-15T12:21:08.097+05:30  INFO 79332 --- [main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.41]
+2026-10-15T12:21:08.583+05:30  INFO 79332 --- [main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2026-10-15T12:21:08.586+05:30  INFO 79332 --- [main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 8247 ms
+2026-10-15T12:21:09.628+05:30  INFO 79332 --- [main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-10-15T12:21:10.343+05:30  INFO 79332 --- [main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection org.postgresql.jdbc.PgConnection@3f6cce7f
+2026-10-15T12:21:10.361+05:30  INFO 79332 --- [main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-10-15T12:21:10.498+05:30  INFO 79332 --- [main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:postgresql://localhost:5432/ledger (PostgreSQL 16.15)
+2026-10-15T12:21:10.611+05:30  INFO 79332 --- [main] o.f.c.i.s.JdbcTableSchemaHistory         : Schema history table "public"."flyway_schema_history" does not exist yet
+2026-10-15T12:21:10.626+05:30  INFO 79332 --- [main] o.f.core.internal.command.DbValidate     : Successfully validated 8 migrations (execution time 00:00.079s)
+2026-10-15T12:21:10.690+05:30  INFO 79332 --- [main] o.f.c.i.s.JdbcTableSchemaHistory         : Creating Schema History table "public"."flyway_schema_history" ...
+2026-10-15T12:21:10.865+05:30  INFO 79332 --- [main] o.f.core.internal.command.DbMigrate      : Current version of schema "public": << Empty Schema >>
+2026-10-15T12:21:10.882+05:30  INFO 79332 --- [main] o.f.core.internal.command.DbMigrate      : Migrating schema "public" to version "1 - core ledger"
+2026-10-15T12:21:10.992+05:30  INFO 79332 --- [main] o.f.core.internal.command.DbMigrate      : Migrating schema "public" to version "2 - idempotency request hash"
+2026-10-15T12:21:11.040+05:30  INFO 79332 --- [main] o.f.core.internal.command.DbMigrate      : Migrating schema "public" to version "3 - account version"
+2026-10-15T12:21:11.110+05:30  INFO 79332 --- [main] o.f.core.internal.command.DbMigrate      : Migrating schema "public" to version "4 - market data and trading"
+2026-10-15T12:21:11.214+05:30  INFO 79332 --- [main] o.f.core.internal.command.DbMigrate      : Migrating schema "public" to version "5 - seed house account"
+2026-10-15T12:21:11.246+05:30  INFO 79332 --- [main] o.f.core.internal.command.DbMigrate      : Migrating schema "public" to version "6 - account owner"
+2026-10-15T12:21:11.294+05:30  INFO 79332 --- [main] o.f.core.internal.command.DbMigrate      : Migrating schema "public" to version "7 - daily balances"
+2026-10-15T12:21:11.342+05:30  INFO 79332 --- [main] o.f.core.internal.command.DbMigrate      : Migrating schema "public" to version "8 - outbox"
+2026-10-15T12:21:11.405+05:30  INFO 79332 --- [main] o.f.core.internal.command.DbMigrate      : Successfully applied 8 migrations to schema "public", now at version v8 (execution time 00:00.255s)
+2026-10-15T12:21:12.316+05:30  WARN 79332 --- [main] o.s.b.c.l.AbstractListenerFactoryBean    : org.springframework.batch.item.ItemProcessor is an interface. The implementing class will not be queried for annotation based listener configurations. If using @StepScope on a @Bean method, be sure to return the implementing class so listener annotations can be used.
+2026-10-15T12:21:12.332+05:30  WARN 79332 --- [main] o.s.b.c.l.AbstractListenerFactoryBean    : org.springframework.batch.item.ItemProcessor is an interface. The implementing class will not be queried for annotation based listener configurations. If using @StepScope on a @Bean method, be sure to return the implementing class so listener annotations can be used.
+2026-10-15T12:21:14.846+05:30  INFO 79332 --- [main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 8080 (http) with context path '/'
+2026-10-15T12:21:15.032+05:30  INFO 79332 --- [main] o.a.k.clients.consumer.ConsumerConfig    : ConsumerConfig values: 
+	allow.auto.create.topics = true
+	auto.commit.interval.ms = 5000
+	auto.include.jmx.reporter = true
+	auto.offset.reset = earliest
+	bootstrap.servers = [localhost:9092]
+	check.crcs = true
+	client.dns.lookup = use_all_dns_ips
+	client.id = consumer-ledger-notifications-1
+	client.rack = 
+	connections.max.idle.ms = 540000
+	default.api.timeout.ms = 60000
+	enable.auto.commit = false
+	enable.metrics.push = true
+	exclude.internal.topics = true
+	fetch.max.bytes = 52428800
+	fetch.max.wait.ms = 500
+	fetch.min.bytes = 1
+	group.id = ledger-notifications
+	group.instance.id = null
+	group.protocol = classic
+	group.remote.assignor = null
+	heartbeat.interval.ms = 3000
+	interceptor.classes = []
+	internal.leave.group.on.close = true
+	internal.throw.on.fetch.stable.offset.unsupported = false
+	isolation.level = read_uncommitted
+	key.deserializer = class org.apache.kafka.common.serialization.StringDeserializer
+	max.partition.fetch.bytes = 1048576
+	max.poll.interval.ms = 300000
+	max.poll.records = 500
+	metadata.max.age.ms = 300000
+	metadata.recovery.strategy = none
+	metric.reporters = []
+	metrics.num.samples = 2
+	metrics.recording.level = INFO
+	metrics.sample.window.ms = 30000
+	partition.assignment.strategy = [class org.apache.kafka.clients.consumer.RangeAssignor, class org.apache.kafka.clients.consumer.CooperativeStickyAssignor]
+	receive.buffer.bytes = 65536
+	reconnect.backoff.max.ms = 1000
+	reconnect.backoff.ms = 50
+	request.timeout.ms = 30000
+	retry.backoff.max.ms = 1000
+	retry.backoff.ms = 100
+	sasl.client.callback.handler.class = null
+	sasl.jaas.config = null
+	sasl.kerberos.kinit.cmd = /usr/bin/kinit
+	sasl.kerberos.min.time.before.relogin = 60000
+	sasl.kerberos.service.name = null
+	sasl.kerberos.ticket.renew.jitter = 0.05
+	sasl.kerberos.ticket.renew.window.factor = 0.8
+	sasl.login.callback.handler.class = null
+	sasl.login.class = null
+	sasl.login.connect.timeout.ms = null
+	sasl.login.read.timeout.ms = null
+	sasl.login.refresh.buffer.seconds = 300
+	sasl.login.refresh.min.period.seconds = 60
+	sasl.login.refresh.window.factor = 0.8
+	sasl.login.refresh.window.jitter = 0.05
+	sasl.login.retry.backoff.max.ms = 10000
+	sasl.login.retry.backoff.ms = 100
+	sasl.mechanism = GSSAPI
+	sasl.oauthbearer.clock.skew.seconds = 30
+	sasl.oauthbearer.expected.audience = null
+	sasl.oauthbearer.expected.issuer = null
+	sasl.oauthbearer.header.urlencode = false
+	sasl.oauthbearer.jwks.endpoint.refresh.ms = 3600000
+	sasl.oauthbearer.jwks.endpoint.retry.backoff.max.ms = 10000
+	sasl.oauthbearer.jwks.endpoint.retry.backoff.ms = 100
+	sasl.oauthbearer.jwks.endpoint.url = null
+	sasl.oauthbearer.scope.claim.name = scope
+	sasl.oauthbearer.sub.claim.name = sub
+	sasl.oauthbearer.token.endpoint.url = null
+	security.protocol = PLAINTEXT
+	security.providers = null
+	send.buffer.bytes = 131072
+	session.timeout.ms = 45000
+	socket.connection.setup.timeout.max.ms = 30000
+	socket.connection.setup.timeout.ms = 10000
+	ssl.cipher.suites = null
+	ssl.enabled.protocols = [TLSv1.2, TLSv1.3]
+	ssl.endpoint.identification.algorithm = https
+	ssl.engine.factory.class = null
+	ssl.key.password = null
+	ssl.keymanager.algorithm = SunX509
+	ssl.keystore.certificate.chain = null
+	ssl.keystore.key = null
+	ssl.keystore.location = null
+	ssl.keystore.password = null
+	ssl.keystore.type = JKS
+	ssl.protocol = TLSv1.3
+	ssl.provider = null
+	ssl.secure.random.implementation = null
+	ssl.trustmanager.algorithm = PKIX
+	ssl.truststore.certificates = null
+	ssl.truststore.location = null
+	ssl.truststore.password = null
+	ssl.truststore.type = JKS
+	value.deserializer = class org.apache.kafka.common.serialization.StringDeserializer
+
+2026-10-15T12:21:15.210+05:30  INFO 79332 --- [main] o.a.k.c.t.i.KafkaMetricsCollector        : initializing Kafka metrics collector
+2026-10-15T12:21:15.730+05:30  INFO 79332 --- [main] o.a.kafka.common.utils.AppInfoParser     : Kafka version: 3.9.1
+2026-10-15T12:21:15.730+05:30  INFO 79332 --- [main] o.a.kafka.common.utils.AppInfoParser     : Kafka commitId: f745dfdcee2b9851
+2026-10-15T12:21:15.730+05:30  INFO 79332 --- [main] o.a.kafka.common.utils.AppInfoParser     : Kafka startTimeMs: 1792047075729
+2026-10-15T12:21:15.745+05:30  INFO 79332 --- [main] o.a.k.c.c.i.ClassicKafkaConsumer         : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Subscribed to topic(s): ledger.transfers
+2026-10-15T12:21:15.793+05:30  INFO 79332 --- [main] com.portfolio.ledger.LedgerApplication   : Started LedgerApplication in 17.682 seconds (process running for 18.424)
+2026-10-15T12:21:17.620+05:30  WARN 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] org.apache.kafka.clients.NetworkClient   : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] The metadata response from the cluster reported a recoverable issue with correlation id 3 : {ledger.transfers=UNKNOWN_TOPIC_OR_PARTITION}
+2026-10-15T12:21:17.626+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] org.apache.kafka.clients.Metadata        : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Cluster ID: 5L6g3nShT-eMCtK--X86sw
+2026-10-15T12:21:17.775+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Discovered group coordinator localhost:9092 (id: 2147483646 rack: null)
+2026-10-15T12:21:17.789+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] (Re-)joining group
+2026-10-15T12:21:17.831+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Group coordinator localhost:9092 (id: 2147483646 rack: null) is unavailable or invalid due to cause: error response NOT_COORDINATOR. isDisconnected: false. Rediscovery will be attempted.
+2026-10-15T12:21:17.831+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Requesting disconnect from last known coordinator localhost:9092 (id: 2147483646 rack: null)
+2026-10-15T12:21:17.836+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] JoinGroup failed: This is not the correct coordinator. Marking coordinator unknown. Sent generation was Generation{generationId=-1, memberId='', protocol='null'}
+2026-10-15T12:21:17.837+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] org.apache.kafka.clients.NetworkClient   : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Client requested disconnect from node 2147483646
+2026-10-15T12:21:17.848+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Discovered group coordinator localhost:9092 (id: 2147483646 rack: null)
+2026-10-15T12:21:17.850+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Group coordinator localhost:9092 (id: 2147483646 rack: null) is unavailable or invalid due to cause: coordinator unavailable. isDisconnected: false. Rediscovery will be attempted.
+2026-10-15T12:21:17.850+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Requesting disconnect from last known coordinator localhost:9092 (id: 2147483646 rack: null)
+2026-10-15T12:21:17.953+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Discovered group coordinator localhost:9092 (id: 2147483646 rack: null)
+2026-10-15T12:21:17.963+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Request joining group due to: rebalance failed due to 'This is not the correct coordinator.' (NotCoordinatorException)
+2026-10-15T12:21:17.967+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] (Re-)joining group
+2026-10-15T12:21:17.978+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Group coordinator localhost:9092 (id: 2147483646 rack: null) is unavailable or invalid due to cause: error response NOT_COORDINATOR. isDisconnected: false. Rediscovery will be attempted.
+2026-10-15T12:21:17.984+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Requesting disconnect from last known coordinator localhost:9092 (id: 2147483646 rack: null)
+2026-10-15T12:21:17.984+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] JoinGroup failed: This is not the correct coordinator. Marking coordinator unknown. Sent generation was Generation{generationId=-1, memberId='', protocol='null'}
+2026-10-15T12:21:17.984+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] org.apache.kafka.clients.NetworkClient   : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Client requested disconnect from node 2147483646
+2026-10-15T12:21:17.990+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Discovered group coordinator localhost:9092 (id: 2147483646 rack: null)
+2026-10-15T12:21:17.990+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Group coordinator localhost:9092 (id: 2147483646 rack: null) is unavailable or invalid due to cause: coordinator unavailable. isDisconnected: false. Rediscovery will be attempted.
+2026-10-15T12:21:17.994+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Requesting disconnect from last known coordinator localhost:9092 (id: 2147483646 rack: null)
+2026-10-15T12:21:18.106+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Discovered group coordinator localhost:9092 (id: 2147483646 rack: null)
+2026-10-15T12:21:18.114+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Request joining group due to: rebalance failed due to 'This is not the correct coordinator.' (NotCoordinatorException)
+2026-10-15T12:21:18.114+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] (Re-)joining group
+2026-10-15T12:21:18.125+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Group coordinator localhost:9092 (id: 2147483646 rack: null) is unavailable or invalid due to cause: error response NOT_COORDINATOR. isDisconnected: false. Rediscovery will be attempted.
+2026-10-15T12:21:18.125+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Requesting disconnect from last known coordinator localhost:9092 (id: 2147483646 rack: null)
+2026-10-15T12:21:18.125+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] JoinGroup failed: This is not the correct coordinator. Marking coordinator unknown. Sent generation was Generation{generationId=-1, memberId='', protocol='null'}
+2026-10-15T12:21:18.125+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] org.apache.kafka.clients.NetworkClient   : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Client requested disconnect from node 2147483646
+2026-10-15T12:21:18.132+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Discovered group coordinator localhost:9092 (id: 2147483646 rack: null)
+2026-10-15T12:21:18.132+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Group coordinator localhost:9092 (id: 2147483646 rack: null) is unavailable or invalid due to cause: coordinator unavailable. isDisconnected: false. Rediscovery will be attempted.
+2026-10-15T12:21:18.132+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Requesting disconnect from last known coordinator localhost:9092 (id: 2147483646 rack: null)
+2026-10-15T12:21:18.247+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Discovered group coordinator localhost:9092 (id: 2147483646 rack: null)
+2026-10-15T12:21:18.254+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Request joining group due to: rebalance failed due to 'This is not the correct coordinator.' (NotCoordinatorException)
+2026-10-15T12:21:18.263+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] (Re-)joining group
+2026-10-15T12:21:18.265+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Group coordinator localhost:9092 (id: 2147483646 rack: null) is unavailable or invalid due to cause: error response NOT_COORDINATOR. isDisconnected: false. Rediscovery will be attempted.
+2026-10-15T12:21:18.265+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Requesting disconnect from last known coordinator localhost:9092 (id: 2147483646 rack: null)
+2026-10-15T12:21:18.265+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] JoinGroup failed: This is not the correct coordinator. Marking coordinator unknown. Sent generation was Generation{generationId=-1, memberId='', protocol='null'}
+2026-10-15T12:21:18.265+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] org.apache.kafka.clients.NetworkClient   : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Client requested disconnect from node 2147483646
+2026-10-15T12:21:18.281+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Discovered group coordinator localhost:9092 (id: 2147483646 rack: null)
+2026-10-15T12:21:18.283+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Group coordinator localhost:9092 (id: 2147483646 rack: null) is unavailable or invalid due to cause: coordinator unavailable. isDisconnected: false. Rediscovery will be attempted.
+2026-10-15T12:21:18.283+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Requesting disconnect from last known coordinator localhost:9092 (id: 2147483646 rack: null)
+2026-10-15T12:21:18.380+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Discovered group coordinator localhost:9092 (id: 2147483646 rack: null)
+2026-10-15T12:21:18.388+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Request joining group due to: rebalance failed due to 'This is not the correct coordinator.' (NotCoordinatorException)
+2026-10-15T12:21:18.391+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] (Re-)joining group
+2026-10-15T12:21:18.422+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Group coordinator localhost:9092 (id: 2147483646 rack: null) is unavailable or invalid due to cause: error response NOT_COORDINATOR. isDisconnected: false. Rediscovery will be attempted.
+2026-10-15T12:21:18.422+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Requesting disconnect from last known coordinator localhost:9092 (id: 2147483646 rack: null)
+2026-10-15T12:21:18.430+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] JoinGroup failed: This is not the correct coordinator. Marking coordinator unknown. Sent generation was Generation{generationId=-1, memberId='', protocol='null'}
+2026-10-15T12:21:18.430+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] org.apache.kafka.clients.NetworkClient   : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Client requested disconnect from node 2147483646
+2026-10-15T12:21:18.438+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Discovered group coordinator localhost:9092 (id: 2147483646 rack: null)
+2026-10-15T12:21:18.438+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Group coordinator localhost:9092 (id: 2147483646 rack: null) is unavailable or invalid due to cause: coordinator unavailable. isDisconnected: false. Rediscovery will be attempted.
+2026-10-15T12:21:18.438+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Requesting disconnect from last known coordinator localhost:9092 (id: 2147483646 rack: null)
+2026-10-15T12:21:18.548+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Discovered group coordinator localhost:9092 (id: 2147483646 rack: null)
+2026-10-15T12:21:18.548+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Request joining group due to: rebalance failed due to 'This is not the correct coordinator.' (NotCoordinatorException)
+2026-10-15T12:21:18.548+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] (Re-)joining group
+2026-10-15T12:21:18.568+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Group coordinator localhost:9092 (id: 2147483646 rack: null) is unavailable or invalid due to cause: error response NOT_COORDINATOR. isDisconnected: false. Rediscovery will be attempted.
+2026-10-15T12:21:18.568+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Requesting disconnect from last known coordinator localhost:9092 (id: 2147483646 rack: null)
+2026-10-15T12:21:18.568+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] JoinGroup failed: This is not the correct coordinator. Marking coordinator unknown. Sent generation was Generation{generationId=-1, memberId='', protocol='null'}
+2026-10-15T12:21:18.568+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] org.apache.kafka.clients.NetworkClient   : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Client requested disconnect from node 2147483646
+2026-10-15T12:21:18.575+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Discovered group coordinator localhost:9092 (id: 2147483646 rack: null)
+2026-10-15T12:21:18.575+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Group coordinator localhost:9092 (id: 2147483646 rack: null) is unavailable or invalid due to cause: coordinator unavailable. isDisconnected: false. Rediscovery will be attempted.
+2026-10-15T12:21:18.575+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Requesting disconnect from last known coordinator localhost:9092 (id: 2147483646 rack: null)
+2026-10-15T12:21:18.677+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Discovered group coordinator localhost:9092 (id: 2147483646 rack: null)
+2026-10-15T12:21:18.691+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Request joining group due to: rebalance failed due to 'This is not the correct coordinator.' (NotCoordinatorException)
+2026-10-15T12:21:18.694+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] (Re-)joining group
+2026-10-15T12:21:18.706+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Group coordinator localhost:9092 (id: 2147483646 rack: null) is unavailable or invalid due to cause: error response NOT_COORDINATOR. isDisconnected: false. Rediscovery will be attempted.
+2026-10-15T12:21:18.711+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Requesting disconnect from last known coordinator localhost:9092 (id: 2147483646 rack: null)
+2026-10-15T12:21:18.714+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] JoinGroup failed: This is not the correct coordinator. Marking coordinator unknown. Sent generation was Generation{generationId=-1, memberId='', protocol='null'}
+2026-10-15T12:21:18.715+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] org.apache.kafka.clients.NetworkClient   : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Client requested disconnect from node 2147483646
+2026-10-15T12:21:18.722+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Discovered group coordinator localhost:9092 (id: 2147483646 rack: null)
+2026-10-15T12:21:18.727+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Group coordinator localhost:9092 (id: 2147483646 rack: null) is unavailable or invalid due to cause: coordinator unavailable. isDisconnected: false. Rediscovery will be attempted.
+2026-10-15T12:21:18.727+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Requesting disconnect from last known coordinator localhost:9092 (id: 2147483646 rack: null)
+2026-10-15T12:21:18.846+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Discovered group coordinator localhost:9092 (id: 2147483646 rack: null)
+2026-10-15T12:21:18.846+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Request joining group due to: rebalance failed due to 'This is not the correct coordinator.' (NotCoordinatorException)
+2026-10-15T12:21:18.846+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] (Re-)joining group
+2026-10-15T12:21:18.862+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Request joining group due to: need to re-join with the given member-id: consumer-ledger-notifications-1-3140ab30-e8f3-4aba-80ed-4e89c532a1e0
+2026-10-15T12:21:18.862+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] (Re-)joining group
+2026-10-15T12:21:18.880+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Successfully joined group with generation Generation{generationId=1, memberId='consumer-ledger-notifications-1-3140ab30-e8f3-4aba-80ed-4e89c532a1e0', protocol='range'}
+2026-10-15T12:21:18.894+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Finished assignment for group at generation 1: {consumer-ledger-notifications-1-3140ab30-e8f3-4aba-80ed-4e89c532a1e0=Assignment(partitions=[ledger.transfers-0])}
+2026-10-15T12:21:18.934+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Successfully synced group in generation Generation{generationId=1, memberId='consumer-ledger-notifications-1-3140ab30-e8f3-4aba-80ed-4e89c532a1e0', protocol='range'}
+2026-10-15T12:21:18.937+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Notifying assignor about the new Assignment(partitions=[ledger.transfers-0])
+2026-10-15T12:21:18.943+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] k.c.c.i.ConsumerRebalanceListenerInvoker : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Adding newly assigned partitions: ledger.transfers-0
+2026-10-15T12:21:18.959+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Found no committed offset for partition ledger.transfers-0
+2026-10-15T12:21:18.987+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.SubscriptionState    : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Resetting offset for partition ledger.transfers-0 to position FetchPosition{offset=0, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[localhost:9092 (id: 1 rack: null)], epoch=0}}.
+2026-10-15T12:21:18.990+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.s.k.l.KafkaMessageListenerContainer    : ledger-notifications: partitions assigned: [ledger.transfers-0]
+2026-10-15T12:23:47.083+05:30  INFO 79332 --- [http-nio-8080-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-10-15T12:23:47.083+05:30  INFO 79332 --- [http-nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-10-15T12:23:47.098+05:30  INFO 79332 --- [http-nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 0 ms
+2026-10-15T12:23:48.723+05:30  INFO 79332 --- [scheduling-1] o.a.k.clients.producer.ProducerConfig    : ProducerConfig values: 
+	acks = -1
+	auto.include.jmx.reporter = true
+	batch.size = 16384
+	bootstrap.servers = [localhost:9092]
+	buffer.memory = 33554432
+	client.dns.lookup = use_all_dns_ips
+	client.id = producer-1
+	compression.gzip.level = -1
+	compression.lz4.level = 9
+	compression.type = none
+	compression.zstd.level = 3
+	connections.max.idle.ms = 540000
+	delivery.timeout.ms = 120000
+	enable.idempotence = true
+	enable.metrics.push = true
+	interceptor.classes = []
+	key.serializer = class org.apache.kafka.common.serialization.StringSerializer
+	linger.ms = 0
+	max.block.ms = 60000
+	max.in.flight.requests.per.connection = 5
+	max.request.size = 1048576
+	metadata.max.age.ms = 300000
+	metadata.max.idle.ms = 300000
+	metadata.recovery.strategy = none
+	metric.reporters = []
+	metrics.num.samples = 2
+	metrics.recording.level = INFO
+	metrics.sample.window.ms = 30000
+	partitioner.adaptive.partitioning.enable = true
+	partitioner.availability.timeout.ms = 0
+	partitioner.class = null
+	partitioner.ignore.keys = false
+	receive.buffer.bytes = 32768
+	reconnect.backoff.max.ms = 1000
+	reconnect.backoff.ms = 50
+	request.timeout.ms = 30000
+	retries = 2147483647
+	retry.backoff.max.ms = 1000
+	retry.backoff.ms = 100
+	sasl.client.callback.handler.class = null
+	sasl.jaas.config = null
+	sasl.kerberos.kinit.cmd = /usr/bin/kinit
+	sasl.kerberos.min.time.before.relogin = 60000
+	sasl.kerberos.service.name = null
+	sasl.kerberos.ticket.renew.jitter = 0.05
+	sasl.kerberos.ticket.renew.window.factor = 0.8
+	sasl.login.callback.handler.class = null
+	sasl.login.class = null
+	sasl.login.connect.timeout.ms = null
+	sasl.login.read.timeout.ms = null
+	sasl.login.refresh.buffer.seconds = 300
+	sasl.login.refresh.min.period.seconds = 60
+	sasl.login.refresh.window.factor = 0.8
+	sasl.login.refresh.window.jitter = 0.05
+	sasl.login.retry.backoff.max.ms = 10000
+	sasl.login.retry.backoff.ms = 100
+	sasl.mechanism = GSSAPI
+	sasl.oauthbearer.clock.skew.seconds = 30
+	sasl.oauthbearer.expected.audience = null
+	sasl.oauthbearer.expected.issuer = null
+	sasl.oauthbearer.header.urlencode = false
+	sasl.oauthbearer.jwks.endpoint.refresh.ms = 3600000
+	sasl.oauthbearer.jwks.endpoint.retry.backoff.max.ms = 10000
+	sasl.oauthbearer.jwks.endpoint.retry.backoff.ms = 100
+	sasl.oauthbearer.jwks.endpoint.url = null
+	sasl.oauthbearer.scope.claim.name = scope
+	sasl.oauthbearer.sub.claim.name = sub
+	sasl.oauthbearer.token.endpoint.url = null
+	security.protocol = PLAINTEXT
+	security.providers = null
+	send.buffer.bytes = 131072
+	socket.connection.setup.timeout.max.ms = 30000
+	socket.connection.setup.timeout.ms = 10000
+	ssl.cipher.suites = null
+	ssl.enabled.protocols = [TLSv1.2, TLSv1.3]
+	ssl.endpoint.identification.algorithm = https
+	ssl.engine.factory.class = null
+	ssl.key.password = null
+	ssl.keymanager.algorithm = SunX509
+	ssl.keystore.certificate.chain = null
+	ssl.keystore.key = null
+	ssl.keystore.location = null
+	ssl.keystore.password = null
+	ssl.keystore.type = JKS
+	ssl.protocol = TLSv1.3
+	ssl.provider = null
+	ssl.secure.random.implementation = null
+	ssl.trustmanager.algorithm = PKIX
+	ssl.truststore.certificates = null
+	ssl.truststore.location = null
+	ssl.truststore.password = null
+	ssl.truststore.type = JKS
+	transaction.timeout.ms = 60000
+	transactional.id = null
+	value.serializer = class org.apache.kafka.common.serialization.StringSerializer
+
+2026-10-15T12:23:48.730+05:30  INFO 79332 --- [scheduling-1] o.a.k.c.t.i.KafkaMetricsCollector        : initializing Kafka metrics collector
+2026-10-15T12:23:48.798+05:30  INFO 79332 --- [scheduling-1] o.a.k.clients.producer.KafkaProducer     : [Producer clientId=producer-1] Instantiated an idempotent producer.
+2026-10-15T12:23:48.834+05:30  INFO 79332 --- [scheduling-1] o.a.kafka.common.utils.AppInfoParser     : Kafka version: 3.9.1
+2026-10-15T12:23:48.834+05:30  INFO 79332 --- [scheduling-1] o.a.kafka.common.utils.AppInfoParser     : Kafka commitId: f745dfdcee2b9851
+2026-10-15T12:23:48.834+05:30  INFO 79332 --- [scheduling-1] o.a.kafka.common.utils.AppInfoParser     : Kafka startTimeMs: 1792047228834
+2026-10-15T12:23:48.853+05:30  INFO 79332 --- [kafka-producer-network-thread | producer-1] org.apache.kafka.clients.Metadata        : [Producer clientId=producer-1] Cluster ID: 5L6g3nShT-eMCtK--X86sw
+2026-10-15T12:23:48.992+05:30  INFO 79332 --- [kafka-producer-network-thread | producer-1] o.a.k.c.p.internals.TransactionManager   : [Producer clientId=producer-1] ProducerId set to 0 with epoch 0
+2026-10-15T12:23:49.059+05:30 DEBUG 79332 --- [scheduling-1] c.portfolio.ledger.outbox.OutboxRelay    : Outbox relay published 1 event(s)
+2026-10-15T12:23:49.063+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] c.p.ledger.outbox.TransferEventConsumer  : NOTIFY: transfer event 210d486a-e21d-49db-aa7c-6a9bb18bd41b -> {"amount": 250, "description": "deposit", "toAccountId": "0694570f-bf78-4d24-831b-379e260a677a", "fromAccountId": "00000000-0000-0000-0000-000000000001", "transactionId": "eb0c520a-8b89-4878-9761-11278eb2498f"}
+2026-10-15T13:12:16.532+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] k.c.c.i.ConsumerRebalanceListenerInvoker : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Revoke previously assigned partitions ledger.transfers-0
+2026-10-15T13:12:16.532+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.s.k.l.KafkaMessageListenerContainer    : ledger-notifications: partitions revoked: [ledger.transfers-0]
+2026-10-15T13:12:16.532+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Member consumer-ledger-notifications-1-3140ab30-e8f3-4aba-80ed-4e89c532a1e0 sending LeaveGroup request to coordinator localhost:9092 (id: 2147483646 rack: null) due to the consumer unsubscribed from all topics
+2026-10-15T13:12:16.542+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Resetting generation and member id due to: consumer pro-actively leaving the group
+2026-10-15T13:12:16.542+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Request joining group due to: consumer pro-actively leaving the group
+2026-10-15T13:12:16.542+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.i.ClassicKafkaConsumer         : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Unsubscribed all topics or patterns and assigned partitions
+2026-10-15T13:12:16.558+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Resetting generation and member id due to: consumer pro-actively leaving the group
+2026-10-15T13:12:16.558+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-ledger-notifications-1, groupId=ledger-notifications] Request joining group due to: consumer pro-actively leaving the group
+2026-10-15T13:12:17.036+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.apache.kafka.common.metrics.Metrics    : Metrics scheduler closed
+2026-10-15T13:12:17.036+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.apache.kafka.common.metrics.Metrics    : Closing reporter org.apache.kafka.common.metrics.JmxReporter
+2026-10-15T13:12:17.036+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.apache.kafka.common.metrics.Metrics    : Closing reporter org.apache.kafka.common.telemetry.internals.ClientTelemetryReporter
+2026-10-15T13:12:17.036+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.apache.kafka.common.metrics.Metrics    : Metrics reporters closed
+2026-10-15T13:12:17.050+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.a.kafka.common.utils.AppInfoParser     : App info kafka.consumer for consumer-ledger-notifications-1 unregistered
+2026-10-15T13:12:17.052+05:30  INFO 79332 --- [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] o.s.k.l.KafkaMessageListenerContainer    : ledger-notifications: Consumer stopped
+2026-10-15T13:12:17.061+05:30  INFO 79332 --- [SpringApplicationShutdownHook] o.s.b.w.e.tomcat.GracefulShutdown        : Commencing graceful shutdown. Waiting for active requests to complete
+2026-10-15T13:12:17.075+05:30  INFO 79332 --- [tomcat-shutdown] o.s.b.w.e.tomcat.GracefulShutdown        : Graceful shutdown complete
+2026-10-15T13:12:17.078+05:30  INFO 79332 --- [SpringApplicationShutdownHook] o.a.k.clients.producer.KafkaProducer     : [Producer clientId=producer-1] Closing the Kafka producer with timeoutMillis = 30000 ms.
+2026-10-15T13:12:17.083+05:30  INFO 79332 --- [SpringApplicationShutdownHook] o.apache.kafka.common.metrics.Metrics    : Metrics scheduler closed
+2026-10-15T13:12:17.083+05:30  INFO 79332 --- [SpringApplicationShutdownHook] o.apache.kafka.common.metrics.Metrics    : Closing reporter org.apache.kafka.common.metrics.JmxReporter
+2026-10-15T13:12:17.083+05:30  INFO 79332 --- [SpringApplicationShutdownHook] o.apache.kafka.common.metrics.Metrics    : Closing reporter org.apache.kafka.common.telemetry.internals.ClientTelemetryReporter
+2026-10-15T13:12:17.083+05:30  INFO 79332 --- [SpringApplicationShutdownHook] o.apache.kafka.common.metrics.Metrics    : Metrics reporters closed
+2026-10-15T13:12:17.087+05:30  INFO 79332 --- [SpringApplicationShutdownHook] o.a.kafka.common.utils.AppInfoParser     : App info kafka.producer for producer-1 unregistered
+2026-10-15T13:12:17.087+05:30  INFO 79332 --- [SpringApplicationShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown initiated...
+2026-10-15T13:12:17.104+05:30  INFO 79332 --- [SpringApplicationShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown completed.

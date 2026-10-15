@@ -7,7 +7,9 @@
 | 2a | REST API with problem+json errors and idempotent writes (done) | Spring Web |
 | 2b | Spring Security, OAuth2 JWT, account ownership (done) | Keycloak in Docker |
 | 2c | Spring Batch nightly close with end-of-day balances and reconciliation (done) | Spring Batch |
-| 3 | 4 services, Kafka, outbox, saga, Redis, Resilience4j | Kafka (KRaft) + Redis in Docker; Eureka |
+| 3a | Transactional outbox and Kafka events (done) | Kafka (KRaft) in Docker |
+| 3b | Split into 3 services (ledger, trading, notification) and a trade saga | Maven modules, Kafka |
+| 3c | Redis caching and Resilience4j (retry, circuit breaker) | Redis in Docker |
 | 4 | Docker, K8s, CI/CD, Azure deploy, observability | kind/k3s locally; GitHub Actions; Azure Container Apps + Postgres Flexible Server (free allowances); GHCR; Prometheus/Grafana/Jaeger locally; Bicep or Terraform |
 | 5 | Lucene+Tika, RAG, Presidio PII masking | pgvector, Ollama (local LLM), Presidio sidecar |
 

@@ -1,6 +1,7 @@
 package com.portfolio.ledger.service;
 
 import com.portfolio.ledger.domain.*;
+import com.portfolio.ledger.outbox.TransferCompleted;
 import com.portfolio.ledger.repository.LedgerRepository;
 import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.dao.OptimisticLockingFailureException;
@@ -103,6 +104,8 @@ public class OptimisticLedgerService {
                 throw new OptimisticLockingFailureException("Account " + v.account().id() + " changed concurrently");
             }
         }
+        repo.insertOutboxEvent(TransferCompleted.AGGREGATE, txId, TransferCompleted.TYPE,
+                TransferCompleted.of(txId, req).toJson());
         return new TransferResult(txId, false);
     }
 
