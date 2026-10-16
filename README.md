@@ -16,6 +16,7 @@ hard part of payments software: moving money correctly under concurrency, retrie
 - Account statements (newest entries first) and a reconciliation query that detects drift between cached balances and ledger entries.
 - Versioned schema migrations with Flyway.
 - Three services (ledger, trading, notification) communicating over REST and Kafka, each with its own database; trades run as a saga with compensation.
+- Retries and a circuit breaker around service calls; a fail-open Redis cache for market quotes.
 
 ## Market data and trading
 
@@ -28,6 +29,11 @@ in the trading service, so a trade is a saga: the trade is saved as PENDING, the
 repeat, thanks to idempotency keys), and then the position is updated and the trade marked COMPLETED. If the ledger refuses,
 the trade is REJECTED and any reserved shares are returned. If the ledger cannot be reached, the trade stays PENDING and is
 retried automatically. Design notes: [ADR 0011](docs/adr/0011-trade-saga-and-service-to-service-auth.md).
+
+Calls from trading to the ledger go through retries (3 tries with growing waits) and a circuit breaker: after repeated
+failures the breaker opens and calls fail immediately instead of waiting for timeouts, then it tests the ledger again
+after 10 seconds. Quotes can be cached in Redis for a few seconds (`MARKET_CACHE_ENABLED=true`); if Redis is down the
+service simply asks the provider. Design notes: [ADR 0012](docs/adr/0012-resilience-and-quote-cache.md).
 
 Console demo of the ledger: `mvn -pl ledger-service spring-boot:run -Dspring-boot.run.profiles=demo` (needs `docker compose up -d`).
 
@@ -128,14 +134,14 @@ ledger runs without Kafka.
 
 ## Tech stack
 
-Java 21, Spring Boot 3.5 (JDBC), PostgreSQL 16, Flyway, JUnit 5, Mockito, Testcontainers, Datafaker, Docker Compose, GitHub Actions.
+Java 21, Spring Boot 3.5 (JDBC), PostgreSQL 16, Flyway, Redis, Resilience4j, JUnit 5, Mockito, Testcontainers, Datafaker, Docker Compose, GitHub Actions.
 
 ## Getting started
 
 Prerequisites: JDK 21, Maven 3.9+, and Docker.
 
 ```bash
-docker compose up -d     # PostgreSQL (databases ledger, notifications, trading), Keycloak, Kafka
+docker compose up -d     # PostgreSQL (databases ledger, notifications, trading), Keycloak, Kafka, Redis
 mvn verify               # builds every module: unit tests (Mockito) and integration tests (Testcontainers)
 mvn -pl ledger-service spring-boot:run        # ledger API, applies migrations on startup
 mvn -pl trading-service spring-boot:run       # trades and portfolio (needs the ledger running)

@@ -5,7 +5,6 @@ import com.portfolio.trading.AccountNotFoundException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.stereotype.Component;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
@@ -19,7 +18,6 @@ import java.util.concurrent.ConcurrentHashMap;
  * Calls the ledger service over HTTP. Timeouts come from spring.http.client.* so a slow ledger fails fast and the
  * saga retries later instead of holding threads.
  */
-@Component
 class HttpLedgerClient implements LedgerClient {
 
     private final RestClient http;

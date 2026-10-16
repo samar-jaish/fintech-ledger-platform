@@ -13,6 +13,12 @@ spring:
     client:
       connect-timeout: 2s       # applies to the ledger client: fail fast, the saga retries later
       read-timeout: 5s
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 200ms            # a slow Redis must never slow trading: give up quickly and use the provider
+      connect-timeout: 200ms
   security:
     oauth2:
       resourceserver:
@@ -24,6 +30,15 @@ ledger-client:
   token-url: ${KEYCLOAK_TOKEN_URL:http://localhost:8180/realms/ledger/protocol/openid-connect/token}
   client-id: trading-service
   client-secret: ${TRADING_CLIENT_SECRET:trading-service-secret}   # local demo secret; real deployments inject it
+
+  resilience:
+    max-attempts: 3             # tries per ledger call (the first one included)
+    initial-backoff: 200ms      # 200ms before the 2nd try, 400ms before the 3rd
+    window-size: 10             # the breaker looks at the last 10 calls
+    minimum-calls: 5            # and never opens before it has seen 5
+    failure-rate-percent: 50    # opens when half of them failed
+    open-duration: 10s          # then rejects calls for 10 seconds before testing the ledger again
+    half-open-calls: 2
 
 trading:
   recovery:
@@ -37,6 +52,10 @@ market:
   # live:      real vendors (needs FINNHUB_API_KEY and TWELVEDATA_API_KEY)
   # Switch without editing this file:  set MARKET_PROVIDER=live
   provider: ${MARKET_PROVIDER:simulated}
+  cache:
+    # Redis cache for quotes (docker compose up -d starts Redis). Off by default so the service runs without it.
+    enabled: ${MARKET_CACHE_ENABLED:false}
+    ttl: 5s
   simulated:
     seed: 42
     latency-ms: 0

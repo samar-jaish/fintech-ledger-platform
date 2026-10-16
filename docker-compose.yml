@@ -21,6 +21,11 @@ services:
     ports: ["8180:8180"]
     volumes: ["./docker/keycloak:/opt/keycloak/data/import:ro"]
 
+  # Cache for market quotes (trading-service, MARKET_CACHE_ENABLED=true). Local development only: no password, no persistence.
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+
   # Single-node Kafka in KRaft mode (no ZooKeeper). Local development only.
   kafka:
     image: apache/kafka:3.8.0
