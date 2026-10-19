@@ -19,7 +19,7 @@ COPY ${MODULE}/src ${MODULE}/src
 RUN --mount=type=cache,target=/root/.m2 mvn -B -ntp -pl ${MODULE} -DskipTests package
 
 # ---- Stage 2: run ----
-FROM eclipse-temurin:21-jre
+FROM eclipse-temurin:24-jre
 ARG MODULE
 # Never run as root inside a container: a bug in the app should not hand out root.
 RUN useradd --system --uid 10001 --no-create-home app
