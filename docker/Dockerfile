@@ -6,7 +6,7 @@
 # (no compiler, no Maven, no source code).
 
 # ---- Stage 1: build ----
-FROM maven:3.9-eclipse-temurin-21 AS build
+FROM maven:3.9-eclipse-temurin-26 AS build
 ARG MODULE
 WORKDIR /src
 # Every module's pom must be present because the parent pom lists them all; only this module's sources are copied.
