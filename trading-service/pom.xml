@@ -10,7 +10,7 @@
   <artifactId>trading-service</artifactId>
   <description>Market orders, holdings and portfolio valuation. Moves cash through the ledger service (saga)</description>
   <properties>
-    <resilience4j.version>2.2.0</resilience4j.version>
+    <resilience4j.version>2.4.0</resilience4j.version>
   </properties>
   <dependencies>
     <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-web</artifactId></dependency>
