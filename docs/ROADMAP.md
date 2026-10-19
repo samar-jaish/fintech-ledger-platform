@@ -12,7 +12,7 @@
 | 3b-2 | Trading service split out, trade saga with compensation, service-to-service auth (done) | OAuth2 client credentials (Keycloak) |
 | 3c | Resilience4j retry and circuit breaker around the ledger client; Redis quote cache (done) | Redis in Docker, Resilience4j |
 | 4a | Dockerfile per service, one-command start of the whole platform with Docker Compose (done) | Docker, Docker Compose |
-| 4b | CI: build, test and publish images on every push | GitHub Actions, GHCR |
+| 4b | CI: tests, an end-to-end smoke test of the containers, and image publishing (done) | GitHub Actions, GHCR |
 | 4c | Health checks, metrics, dashboards and tracing | Spring Boot Actuator, Prometheus, Grafana, Jaeger locally |
 | 4d | Kubernetes locally, then Azure | kind/k3s locally; Azure Container Apps + Postgres Flexible Server (free allowances); Bicep or Terraform |
 | 5 | Lucene+Tika, RAG, Presidio PII masking | pgvector, Ollama (local LLM), Presidio sidecar |

@@ -160,6 +160,14 @@ The services reach each other by name (`ledger-service`, `postgres`, `kafka`, `k
 the quote cache are switched on. `docker compose up -d` without the profile still starts only the infrastructure, which is
 what the tests and running from the IDE use. Design notes: [ADR 0013](docs/adr/0013-container-images-and-compose.md).
 
+### Continuous integration
+
+Every push and pull request runs three stages on GitHub Actions: all unit and integration tests, then a smoke test that
+starts the whole platform with Docker Compose and sends real requests (login, deposit, trade, replay, access rules and the
+Kafka event path, see `scripts/smoke-test.sh`), and, on `master` only, publishing the three images to the GitHub
+Container Registry (`ghcr.io/samar-jaish/fintech-ledger-platform/<service>`, tagged `latest` and with the commit id).
+Design notes: [ADR 0014](docs/adr/0014-ci-smoke-test-and-image-publishing.md).
+
 ## Testing
 
 - Unit tests run the business logic against a mocked repository.
