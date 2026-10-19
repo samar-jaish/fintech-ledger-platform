@@ -15,6 +15,7 @@ application-local.yaml
 application-local.properties
 *.secret
 
+# Log files: never commit these
 log/
 logs/
 *.log

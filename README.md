@@ -148,6 +148,18 @@ mvn -pl trading-service spring-boot:run       # trades and portfolio (needs the 
 mvn -pl notification-service spring-boot:run  # optional: consumes transfer events
 ```
 
+### Everything in containers
+
+```bash
+docker compose --profile apps up -d --build   # builds an image per service and starts the whole platform
+docker compose --profile apps logs -f ledger-service trading-service
+docker compose --profile apps down            # stop (add -v to also delete the databases)
+```
+
+The services reach each other by name (`ledger-service`, `postgres`, `kafka`, `keycloak`, `redis`), and the ledger relay and
+the quote cache are switched on. `docker compose up -d` without the profile still starts only the infrastructure, which is
+what the tests and running from the IDE use. Design notes: [ADR 0013](docs/adr/0013-container-images-and-compose.md).
+
 ## Testing
 
 - Unit tests run the business logic against a mocked repository.
