@@ -7,6 +7,14 @@ set -euo pipefail
 LEDGER=${LEDGER_URL:-http://localhost:8080}
 TRADING=${TRADING_URL:-http://localhost:8082}
 KEYCLOAK=${KEYCLOAK_URL:-http://localhost:8180}
+# Operations ports: health and metrics. Separate from the API ports on purpose.
+LEDGER_OPS=${LEDGER_OPS_URL:-http://localhost:9080}
+TRADING_OPS=${TRADING_OPS_URL:-http://localhost:9082}
+NOTIFY_OPS=${NOTIFY_OPS_URL:-http://localhost:8083}
+PROMETHEUS=${PROMETHEUS_URL:-http://localhost:9090}
+GRAFANA=${GRAFANA_URL:-http://localhost:3000}
+JAEGER=${JAEGER_URL:-http://localhost:16686}
+# Set CHECK_OBSERVABILITY=true when Prometheus, Grafana and Jaeger are running too (--profile observability).
 COMPOSE="docker compose --profile apps"
 RUN_ID=$RANDOM$RANDOM
 
@@ -85,14 +93,76 @@ CODE=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$LEDGER/api/v1/internal/e
 [ "$CODE" = "200" ] || [ "$CODE" = "201" ] || fail "expected HTTP 200/201 for a service token, got $CODE"
 
 step "The transfer event reached the notification service through Kafka"
+NOTIFIED=false
 for _ in $(seq 1 30); do
   # Read the logs into a variable first: grep -q closes the pipe early, which would make "set -o pipefail" report a failure.
   LOGS=$($COMPOSE logs notification-service 2>&1 || true)
   if grep -q "NOTIFY: Transfer" <<< "$LOGS"; then
-    echo "notification received"
-    echo; echo "SMOKE TEST PASSED"
-    exit 0
+    NOTIFIED=true
+    break
   fi
   sleep 2
 done
-fail "no notification after 60 s"
+[ "$NOTIFIED" = "true" ] || fail "no notification after 60 s"
+echo "notification received"
+
+step "Health probes: all three services are live and ready"
+wait_for_status "ledger-service readiness" "$LEDGER_OPS/actuator/health/readiness" 200
+wait_for_status "trading-service readiness" "$TRADING_OPS/actuator/health/readiness" 200
+wait_for_status "notification-service readiness" "$NOTIFY_OPS/actuator/health/readiness" 200
+for ops in "$LEDGER_OPS" "$TRADING_OPS" "$NOTIFY_OPS"; do
+  LIVE=$(curl -fsS "$ops/actuator/health/liveness" | jq -r .status || true)
+  [ "$LIVE" = "UP" ] || fail "liveness at $ops is '$LIVE', expected UP"
+done
+
+step "Metrics: Prometheus format on the operations ports, with our business numbers in it"
+TRADING_METRICS=$(curl -fsS "$TRADING_OPS/actuator/prometheus")
+LEDGER_METRICS=$(curl -fsS "$LEDGER_OPS/actuator/prometheus")
+NOTIFY_METRICS=$(curl -fsS "$NOTIFY_OPS/actuator/prometheus")
+grep -Eq '^http_server_requests_seconds_count\{' <<< "$TRADING_METRICS" || fail "no HTTP request metrics from trading-service"
+grep -Eq 'trading_trades_total\{[^}]*status="COMPLETED"[^}]*\} [1-9]' <<< "$TRADING_METRICS" || fail "trading_trades_total does not show the completed trade"
+grep -Eq '^trading_trades_pending\{' <<< "$TRADING_METRICS" || fail "trading_trades_pending is missing"
+grep -Eq '^ledger_client_circuit_state\{[^}]*\} 0' <<< "$TRADING_METRICS" || fail "the ledger circuit breaker should be CLOSED (0)"
+grep -Eq '^ledger_outbox_pending\{' <<< "$LEDGER_METRICS" || fail "ledger_outbox_pending is missing"
+grep -Eq 'notification_events_total\{[^}]*result="stored"[^}]*\} [1-9]' <<< "$NOTIFY_METRICS" || fail "notification_events_total does not show the stored notification"
+echo "business metrics are present"
+
+step "The operations endpoints are not served on the public API ports"
+for api in "$LEDGER" "$TRADING"; do
+  CODE=$(curl -s -o /dev/null -w '%{http_code}' "$api/actuator/prometheus")
+  [ "$CODE" != "200" ] || fail "metrics must not be served on the API port ($api)"
+done
+
+if [ "${CHECK_OBSERVABILITY:-false}" = "true" ]; then
+  step "Prometheus is scraping all three services"
+  UP=0
+  for _ in $(seq 1 30); do
+    UP=$(curl -fsS "$PROMETHEUS/api/v1/targets" 2>/dev/null | jq '[.data.activeTargets[] | select(.health=="up")] | length' 2>/dev/null || echo 0)
+    [ "$UP" = "3" ] && break
+    sleep 3
+  done
+  [ "$UP" = "3" ] || fail "Prometheus sees $UP healthy targets, expected 3"
+  RULES=$(curl -fsS "$PROMETHEUS/api/v1/rules" | jq '[.data.groups[].rules[]] | length')
+  [ "$RULES" = "6" ] || fail "expected 6 alert rules to be loaded, found $RULES"
+
+  step "Grafana has the provisioned dashboard"
+  FOUND=0
+  for _ in $(seq 1 20); do
+    FOUND=$(curl -fsS "$GRAFANA/api/search?query=Ledger%20platform" 2>/dev/null | jq 'length' 2>/dev/null || echo 0)
+    [ "$FOUND" -ge 1 ] 2>/dev/null && break
+    sleep 3
+  done
+  [ "$FOUND" -ge 1 ] 2>/dev/null || fail "the 'Ledger platform' dashboard was not found in Grafana"
+
+  step "Jaeger shows one trace that crosses trading-service and ledger-service"
+  CROSS=0
+  for _ in $(seq 1 30); do
+    CROSS=$(curl -fsS "$JAEGER/api/traces?service=trading-service&limit=50" 2>/dev/null \
+      | jq '[.data[] | select([.processes[].serviceName] | unique | contains(["ledger-service","trading-service"]))] | length' 2>/dev/null || echo 0)
+    [ "$CROSS" -ge 1 ] 2>/dev/null && break
+    sleep 3
+  done
+  [ "$CROSS" -ge 1 ] 2>/dev/null || fail "no trace spans both services: trace context is not being passed between them"
+fi
+
+echo; echo "SMOKE TEST PASSED"

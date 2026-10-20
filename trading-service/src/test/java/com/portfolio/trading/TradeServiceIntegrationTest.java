@@ -1,5 +1,6 @@
 package com.portfolio.trading;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,6 +49,7 @@ class TradeServiceIntegrationTest {
     @Autowired TradeRecovery recovery;
     @Autowired TradingRepository trades;
     @Autowired FakeLedgerClient ledger;
+    @Autowired MeterRegistry metrics;
 
     @BeforeEach
     void ledgerWorks() {
@@ -215,5 +217,22 @@ class TradeServiceIntegrationTest {
         assertEquals(TradeStatus.PENDING, pending.trade().status());
         assertQty("0", held(account));   // reserved: cannot be sold twice
         assertThrows(TradeRejectedException.class, () -> service.execute(request(account, Side.SELL, "1")));
+    }
+
+    private double tradesWithStatus(String status) {
+        return metrics.get("trading.trades").tag("status", status).functionCounter().count();
+    }
+
+    @Test
+    void tradeMetrics_countFinishedTrades_andShowNothingPendingWhenAllAreDone() {
+        double completedBefore = tradesWithStatus("COMPLETED");
+        UUID account = ledger.fund("1000000");
+
+        service.execute(request(account, Side.BUY, "1"));
+
+        assertEquals(completedBefore + 1, tradesWithStatus("COMPLETED"), 0.0001);
+        // also proves the SQL behind the pending gauges runs on a real Postgres (NaN would mean the query failed)
+        assertFalse(Double.isNaN(metrics.get("trading.trades.pending").gauge().value()));
+        assertFalse(Double.isNaN(metrics.get("trading.trades.pending.oldest.age").gauge().value()));
     }
 }

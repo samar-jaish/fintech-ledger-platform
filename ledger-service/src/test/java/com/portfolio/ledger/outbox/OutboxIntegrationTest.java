@@ -5,6 +5,7 @@ import com.portfolio.ledger.domain.InsufficientFundsException;
 import com.portfolio.ledger.domain.SystemAccounts;
 import com.portfolio.ledger.domain.TransferRequest;
 import com.portfolio.ledger.service.LedgerService;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.junit.jupiter.api.Test;
@@ -49,6 +50,7 @@ class OutboxIntegrationTest {
     @Autowired LedgerService ledger;
     @Autowired JdbcClient jdbc;
     @Autowired ConsumerFactory<String, String> consumerFactory;
+    @Autowired MeterRegistry metrics;
 
     private Account funded(String amount) {
         Account a = ledger.openAccount("outbox-" + UUID.randomUUID(), "USD");
@@ -114,5 +116,19 @@ class OutboxIntegrationTest {
             assertNotNull(found.headers().lastHeader("event-id"));
             assertTrue(found.value().contains(txId.toString()));
         }
+    }
+
+    @Test
+    void outboxMetrics_areReadable_andTheRelayKeepsTheBacklogShort() {
+        funded("10.00");   // writes at least one event
+
+        // NaN would mean the metric query failed against the real database
+        double pending = metrics.get("ledger.outbox.pending").gauge().value();
+        double oldest = metrics.get("ledger.outbox.oldest.pending.age").gauge().value();
+        assertTrue(!Double.isNaN(pending) && pending >= 0, "pending should be a number, was " + pending);
+        assertTrue(!Double.isNaN(oldest) && oldest >= 0, "age should be a number, was " + oldest);
+
+        // the relay runs every 200 ms, so the backlog drains to zero
+        await().atMost(Duration.ofSeconds(30)).until(() -> metrics.get("ledger.outbox.pending").gauge().value() == 0.0);
     }
 }

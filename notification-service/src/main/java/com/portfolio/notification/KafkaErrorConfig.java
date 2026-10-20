@@ -1,5 +1,8 @@
 package com.portfolio.notification;
 
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.TopicPartition;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,11 +23,20 @@ import org.springframework.util.backoff.FixedBackOff;
 class KafkaErrorConfig {
 
     @Bean
-    CommonErrorHandler errorHandler(KafkaOperations<String, String> kafka,
+    CommonErrorHandler errorHandler(KafkaOperations<String, String> kafka, MeterRegistry registry,
                                     @Value("${notification.retry.interval-ms}") long intervalMs,
                                     @Value("${notification.retry.attempts}") long attempts) {
+        // Counts every message given up on, so a dashboard or alert shows poison messages without anyone reading logs.
+        Counter deadLettered = Counter.builder("notification.dead.lettered")
+                .description("Messages sent to the dead-letter topic after the retries were used up").register(registry);
         var recoverer = new DeadLetterPublishingRecoverer(kafka,
-                (ConsumerRecord<?, ?> record, Exception e) -> new TopicPartition(record.topic() + ".DLT", record.partition()));
+                (ConsumerRecord<?, ?> record, Exception e) -> new TopicPartition(record.topic() + ".DLT", record.partition())) {
+            @Override
+            public void accept(ConsumerRecord<?, ?> record, Consumer<?, ?> consumer, Exception exception) {
+                deadLettered.increment();
+                super.accept(record, consumer, exception);
+            }
+        };
         return new DefaultErrorHandler(recoverer, new FixedBackOff(intervalMs, attempts));
     }
 }

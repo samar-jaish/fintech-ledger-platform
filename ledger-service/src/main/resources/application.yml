@@ -1,4 +1,6 @@
 spring:
+  application:
+    name: ledger-service
   datasource:
     url: jdbc:postgresql://localhost:5432/ledger
     username: ledger
@@ -11,6 +13,8 @@ spring:
       initialize-schema: always # Spring Batch's own metadata tables (BATCH_*); existing tables are left alone
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    template:
+      observation-enabled: true   # trace context travels in the Kafka message headers
     producer:
       acks: all                 # wait for the broker to confirm before we mark an event published
       properties:
@@ -36,3 +40,31 @@ ledger:
       enabled: ${OUTBOX_RELAY_ENABLED:false}
       interval-ms: 500
       batch-size: 100
+
+management:
+  server:
+    # Operations endpoints (health, Prometheus) listen on their own port, so the API port serves only the API
+    # and the operations port can stay private in production.
+    port: 9080
+    address: 127.0.0.1   # this computer only when run from the IDE; the compose file opens it to the compose network
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus   # nothing else is exposed (no env, beans, heapdump, loggers...)
+  endpoint:
+    health:
+      probes:
+        enabled: true                     # adds /actuator/health/liveness and /actuator/health/readiness
+      show-components: always             # list which parts are UP or DOWN, without internal details
+      group:
+        readiness:
+          include: readinessState,db      # "ready" means: can reach its database
+  metrics:
+    tags:
+      application: ${spring.application.name}   # every metric says which service it came from
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true        # lets Prometheus compute p95/p99 latency
+  tracing:
+    sampling:
+      probability: 0.0                    # off locally; docker compose (observability profile) sets it to 1.0

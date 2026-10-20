@@ -1,6 +1,8 @@
 package com.portfolio.notification;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,9 +25,15 @@ class TransferEventListener {
 
     private final NotificationRepository notifications;
     private final ObjectMapper json = new ObjectMapper();
+    private final Counter stored;
+    private final Counter duplicates;
 
-    TransferEventListener(NotificationRepository notifications) {
+    TransferEventListener(NotificationRepository notifications, MeterRegistry registry) {
         this.notifications = notifications;
+        this.stored = Counter.builder("notification.events").tag("result", "stored")
+                .description("Transfer events handled").register(registry);
+        this.duplicates = Counter.builder("notification.events").tag("result", "duplicate")
+                .description("Transfer events handled").register(registry);
     }
 
     @KafkaListener(topics = "${notification.topic}")
@@ -40,8 +48,10 @@ class TransferEventListener {
         String message = "Transfer of " + event.amount().toPlainString() + " from " + event.fromAccountId()
                 + " to " + event.toAccountId() + (event.description() == null ? "" : " (" + event.description() + ")");
         if (notifications.saveIfNew(eventId, event, message)) {
+            stored.increment();
             log.info("NOTIFY: {}", message);
         } else {
+            duplicates.increment();
             log.info("Duplicate event {} ignored", eventId);
         }
     }

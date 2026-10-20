@@ -6,6 +6,9 @@ import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
 import io.github.resilience4j.core.IntervalFunction;
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
+import io.micrometer.core.instrument.FunctionCounter;
+import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,6 +57,40 @@ public class ResilientLedgerClient implements LedgerClient {
                 log.warn("Ledger circuit breaker: {}", e.getStateTransition()));
         retry.getEventPublisher().onRetry(e ->
                 log.info("Retrying ledger call (attempt {} failed): {}", e.getNumberOfRetryAttempts(), e.getLastThrowable().getMessage()));
+    }
+
+    /**
+     * Publishes the breaker and retry numbers as metrics, so a dashboard shows when the ledger is struggling:
+     * the breaker state (0 closed, 1 half-open, 2 open), the failure rate it sees, calls it refused while open, and
+     * how often a retry was needed. Reads the live Resilience4j objects, so there is nothing to keep in sync.
+     */
+    public void bindMetrics(MeterRegistry registry) {
+        Gauge.builder("ledger.client.circuit.state", breaker, b -> stateNumber(b.getState()))
+                .description("Ledger circuit breaker: 0 closed (normal), 1 half-open (testing), 2 open (rejecting calls)")
+                .register(registry);
+        Gauge.builder("ledger.client.circuit.failure.rate", breaker, b -> b.getMetrics().getFailureRate())
+                .description("Percent of recent ledger calls that failed (-1 until enough calls were seen)")
+                .register(registry);
+        FunctionCounter.builder("ledger.client.circuit.not.permitted", breaker, b -> b.getMetrics().getNumberOfNotPermittedCalls())
+                .description("Calls refused immediately because the breaker was open")
+                .register(registry);
+        FunctionCounter.builder("ledger.client.retry.calls", retry, r -> r.getMetrics().getNumberOfSuccessfulCallsWithRetryAttempt())
+                .tag("outcome", "succeeded_after_retry")
+                .description("Ledger calls that needed a retry")
+                .register(registry);
+        FunctionCounter.builder("ledger.client.retry.calls", retry, r -> r.getMetrics().getNumberOfFailedCallsWithRetryAttempt())
+                .tag("outcome", "failed_after_retry")
+                .description("Ledger calls that needed a retry")
+                .register(registry);
+    }
+
+    private static double stateNumber(CircuitBreaker.State state) {
+        return switch (state) {
+            case CLOSED -> 0;
+            case HALF_OPEN -> 1;
+            case OPEN -> 2;
+            default -> 3;   // DISABLED, FORCED_OPEN, METRICS_ONLY: not used here
+        };
     }
 
     /** CLOSED (normal), OPEN (rejecting calls) or HALF_OPEN (testing recovery). For logs and tests. */

@@ -67,3 +67,34 @@ market:
     twelvedata:
       base-url: https://api.twelvedata.com
       api-key: ${TWELVEDATA_API_KEY:}
+
+management:
+  server:
+    # Operations endpoints (health, Prometheus) listen on their own port, so the API port serves only the API
+    # and the operations port can stay private in production.
+    port: 9082
+    address: 127.0.0.1   # this computer only when run from the IDE; the compose file opens it to the compose network
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus   # nothing else is exposed (no env, beans, heapdump, loggers...)
+  endpoint:
+    health:
+      probes:
+        enabled: true                     # adds /actuator/health/liveness and /actuator/health/readiness
+      show-components: always             # list which parts are UP or DOWN, without internal details
+      group:
+        readiness:
+          include: readinessState,db      # "ready" means: can reach its database
+  health:
+    redis:
+      enabled: ${MARKET_CACHE_ENABLED:false}   # Redis is optional (fail-open cache), so it only counts when the cache is on
+  metrics:
+    tags:
+      application: ${spring.application.name}   # every metric says which service it came from
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true        # lets Prometheus compute p95/p99 latency
+  tracing:
+    sampling:
+      probability: 0.0                    # off locally; docker compose (observability profile) sets it to 1.0

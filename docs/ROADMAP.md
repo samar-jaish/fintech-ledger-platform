@@ -13,7 +13,7 @@
 | 3c | Resilience4j retry and circuit breaker around the ledger client; Redis quote cache (done) | Redis in Docker, Resilience4j |
 | 4a | Dockerfile per service, one-command start of the whole platform with Docker Compose (done) | Docker, Docker Compose |
 | 4b | CI: tests, an end-to-end smoke test of the containers, and image publishing (done) | GitHub Actions, GHCR |
-| 4c | Health checks, metrics, dashboards and tracing | Spring Boot Actuator, Prometheus, Grafana, Jaeger locally |
+| 4c | Health checks, metrics, dashboards, alerts and tracing (done) | Spring Boot Actuator, Micrometer, Prometheus, Grafana, OpenTelemetry, Jaeger |
 | 4d | Kubernetes locally, then Azure | kind/k3s locally; Azure Container Apps + Postgres Flexible Server (free allowances); Bicep or Terraform |
 | 5 | Lucene+Tika, RAG, Presidio PII masking | pgvector, Ollama (local LLM), Presidio sidecar |
 

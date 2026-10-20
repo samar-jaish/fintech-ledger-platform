@@ -134,7 +134,7 @@ ledger runs without Kafka.
 
 ## Tech stack
 
-Java 21, Spring Boot 3.5 (JDBC), PostgreSQL 16, Flyway, Redis, Resilience4j, JUnit 5, Mockito, Testcontainers, Datafaker, Docker Compose, GitHub Actions.
+Java 21, Spring Boot 3.5 (JDBC), PostgreSQL 16, Flyway, Redis, Resilience4j, JUnit 5, Mockito, Testcontainers, Datafaker, Docker Compose, GitHub Actions, Micrometer, Prometheus, Grafana, OpenTelemetry, Jaeger.
 
 ## Getting started
 
@@ -164,9 +164,31 @@ what the tests and running from the IDE use. Design notes: [ADR 0013](docs/adr/0
 
 Every push and pull request runs three stages on GitHub Actions: all unit and integration tests, then a smoke test that
 starts the whole platform with Docker Compose and sends real requests (login, deposit, trade, replay, access rules and the
-Kafka event path, see `scripts/smoke-test.sh`), and, on `master` only, publishing the three images to the GitHub
+Kafka event path, health, metrics, the Grafana dashboard and cross-service traces, see `scripts/smoke-test.sh`), and, on `master` only, publishing the three images to the GitHub
 Container Registry (`ghcr.io/samar-jaish/fintech-ledger-platform/<service>`, tagged `latest` and with the commit id).
 Design notes: [ADR 0014](docs/adr/0014-ci-smoke-test-and-image-publishing.md).
+
+### Observability
+
+```bash
+docker compose --profile apps --profile observability up -d --build
+```
+
+| What | Where |
+| --- | --- |
+| Grafana dashboard "Ledger platform" | http://localhost:3000 (admin / admin, or just view) |
+| Prometheus (targets, alert rules) | http://localhost:9090 |
+| Jaeger (traces) | http://localhost:16686 |
+| Health: ledger, trading, notification | http://localhost:9080, :9082, :8083 + `/actuator/health/readiness` |
+| Raw metrics | http://localhost:9080/actuator/prometheus (and :9082, :8083) |
+
+Every service reports health (liveness and readiness, where ready means "can reach its database"), JVM, HTTP, database pool
+and Kafka metrics, and its own business numbers: trades by outcome, pending trades and how long the oldest has waited, the
+ledger circuit breaker state and retries, events waiting in the outbox, notifications stored or ignored as duplicates, and
+dead-lettered messages. Six alert rules (service down, 5xx rate, breaker open, trades stuck pending, outbox backlog, dead
+letters) are evaluated by Prometheus. Requests are traced across services, so one trade shows as a single trace through
+trading-service and ledger-service. The health and metrics endpoints use a separate management port that is not part of
+the public API. Design notes: [ADR 0015](docs/adr/0015-observability.md).
 
 ## Testing
 
@@ -224,6 +246,6 @@ ledger-service/            ledger, REST API, security, nightly close, outbox pub
   src/test/java                     unit, integration and benchmark tests
 trading-service/           trades (saga), holdings, market data, portfolio; own database
 notification-service/      Kafka consumer with its own database
-docker/                    Keycloak realm, Postgres init script
+docker/                    Dockerfile, Keycloak realm, Postgres init script, Prometheus and Grafana configuration
 docs/                      ADRs and roadmap
 ```

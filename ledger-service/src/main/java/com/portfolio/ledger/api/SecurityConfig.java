@@ -3,6 +3,7 @@ package com.portfolio.ledger.api;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -30,6 +31,21 @@ import java.util.Map;
 @Configuration
 @EnableWebSecurity
 class SecurityConfig {
+
+    /**
+     * Operations endpoints (health, Prometheus) are served on their own management port, which is not part of the public
+     * API and is not published to the outside in production. This chain lets them through without a token so Prometheus
+     * and the container health checks can reach them. On the API port these paths do not exist (404).
+     */
+    @Bean
+    @Order(1)
+    SecurityFilterChain operationsSecurity(HttpSecurity http) throws Exception {
+        return http
+                .securityMatcher("/actuator/**")
+                .csrf(csrf -> csrf.disable())
+                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+                .build();
+    }
 
     @Bean
     SecurityFilterChain apiSecurity(HttpSecurity http) throws Exception {

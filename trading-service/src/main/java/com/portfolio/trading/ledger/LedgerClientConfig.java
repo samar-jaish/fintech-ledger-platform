@@ -1,5 +1,7 @@
 package com.portfolio.trading.ledger;
 
+import io.micrometer.core.instrument.MeterRegistry;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -12,7 +14,7 @@ import java.time.Duration;
 class LedgerClientConfig {
 
     @Bean
-    LedgerClient ledgerClient(RestClient.Builder builder, ServiceTokens tokens,
+    LedgerClient ledgerClient(RestClient.Builder builder, ServiceTokens tokens, ObjectProvider<MeterRegistry> metrics,
             @Value("${ledger-client.base-url}") String baseUrl,
             @Value("${ledger-client.resilience.max-attempts:3}") int maxAttempts,
             @Value("${ledger-client.resilience.initial-backoff:200ms}") Duration initialBackoff,
@@ -23,6 +25,8 @@ class LedgerClientConfig {
             @Value("${ledger-client.resilience.half-open-calls:2}") int halfOpenCalls) {
         ResilienceSettings settings = new ResilienceSettings(maxAttempts, initialBackoff, windowSize, minimumCalls,
                 failureRatePercent, openDuration, halfOpenCalls);
-        return new ResilientLedgerClient(new HttpLedgerClient(builder, baseUrl, tokens), settings);
+        ResilientLedgerClient client = new ResilientLedgerClient(new HttpLedgerClient(builder, baseUrl, tokens), settings);
+        metrics.ifAvailable(client::bindMetrics);
+        return client;
     }
 }

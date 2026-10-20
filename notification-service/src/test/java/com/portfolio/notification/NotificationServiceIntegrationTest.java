@@ -1,5 +1,6 @@
 package com.portfolio.notification;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -23,6 +24,7 @@ import java.util.UUID;
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** Real Postgres and Kafka. Retries are shortened so the dead-letter test is quick. */
 @SpringBootTest(properties = {"notification.retry.interval-ms=100", "notification.retry.attempts=2"})
@@ -42,6 +44,7 @@ class NotificationServiceIntegrationTest {
     @Autowired KafkaTemplate<String, String> template;
     @Autowired ConsumerFactory<String, String> consumerFactory;
     @Autowired NotificationRepository notifications;
+    @Autowired MeterRegistry metrics;
 
     private void publish(String key, UUID eventId, String json) throws Exception {
         var record = new ProducerRecord<>(TOPIC, key, json);
@@ -66,6 +69,8 @@ class NotificationServiceIntegrationTest {
         await().atMost(Duration.ofSeconds(60)).until(() -> notifications.countForTransaction(tx) >= 1);
         Thread.sleep(2000);   // give the duplicate time to be processed (and ignored)
         assertEquals(1, notifications.countForTransaction(tx));
+        assertTrue(metrics.get("notification.events").tag("result", "duplicate").counter().count() >= 1,
+                "the ignored duplicate should be counted");
     }
 
     @Test
@@ -86,6 +91,8 @@ class NotificationServiceIntegrationTest {
             }
             assertNotNull(found, "the bad message should be dead-lettered");
             assertEquals("this is not json", found.value());
+            assertTrue(metrics.get("notification.dead.lettered").counter().count() >= 1,
+                    "the dead-lettered message should be counted");
         }
     }
 }

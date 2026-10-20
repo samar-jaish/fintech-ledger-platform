@@ -33,7 +33,8 @@ jobs:
             **/target/surefire-reports
             **/target/failsafe-reports
 
-  # 2. Build the three images, start the whole platform with Docker Compose and run real requests against it.
+  # 2. Build the three images, start the whole platform (plus Prometheus, Grafana and Jaeger) with Docker Compose and run
+  #    real requests against it, including checks on health, metrics, dashboards and traces.
   smoke:
     needs: test
     runs-on: ubuntu-latest
@@ -41,15 +42,17 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Build and start the platform
-        run: docker compose --profile apps up -d --build
+        run: docker compose --profile apps --profile observability up -d --build
       - name: Smoke test
         run: bash scripts/smoke-test.sh
+        env:
+          CHECK_OBSERVABILITY: 'true'
       - name: Show container logs when something failed
         if: failure()
-        run: docker compose --profile apps logs --no-color --tail 200
+        run: docker compose --profile apps --profile observability logs --no-color --tail 200
       - name: Stop the platform
         if: always()
-        run: docker compose --profile apps down -v
+        run: docker compose --profile apps --profile observability down -v
 
   # 3. Publish the images to GitHub's container registry, only for commits on master that passed everything above.
   images:

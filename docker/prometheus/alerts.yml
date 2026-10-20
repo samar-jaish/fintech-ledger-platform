@@ -1,0 +1,53 @@
+# Alert rules. Prometheus evaluates them and shows firing alerts at http://localhost:9090/alerts.
+# There is no Alertmanager here, so nothing is sent anywhere: in a real setup Alertmanager would page or email someone.
+# Each rule alerts on a symptom a person would care about, not on every internal detail.
+groups:
+  - name: ledger-platform
+    rules:
+      - alert: ServiceDown
+        expr: up{job=~"ledger-service|trading-service|notification-service"} == 0
+        for: 30s
+        labels: { severity: critical }
+        annotations:
+          summary: "{{ $labels.job }} cannot be scraped"
+          description: "Prometheus has not been able to read {{ $labels.job }} for 30 seconds: it is down or unreachable."
+
+      - alert: HighServerErrorRate
+        expr: |
+          sum by (application) (rate(http_server_requests_seconds_count{status=~"5..", uri!~"/actuator.*"}[1m]))
+            / sum by (application) (rate(http_server_requests_seconds_count{uri!~"/actuator.*"}[1m])) > 0.05
+        for: 1m
+        labels: { severity: warning }
+        annotations:
+          summary: "More than 5% of requests to {{ $labels.application }} fail with a 5xx"
+
+      - alert: LedgerCircuitBreakerOpen
+        expr: ledger_client_circuit_state == 2
+        for: 10s
+        labels: { severity: warning }
+        annotations:
+          summary: "Trading has stopped calling the ledger (circuit breaker open)"
+          description: "New trades stay PENDING until the ledger answers again and the breaker closes."
+
+      - alert: TradesStuckPending
+        expr: trading_trades_pending_oldest_age_seconds > 60
+        for: 30s
+        labels: { severity: warning }
+        annotations:
+          summary: "A trade has been PENDING for over a minute"
+          description: "The recovery job is not finishing it. Check the ledger and the circuit breaker."
+
+      - alert: OutboxBacklog
+        expr: ledger_outbox_oldest_pending_age_seconds > 30
+        for: 30s
+        labels: { severity: warning }
+        annotations:
+          summary: "Ledger events are waiting more than 30 seconds to reach Kafka"
+          description: "Kafka may be down or the outbox relay is failing. Notifications will lag until it recovers."
+
+      - alert: NotificationDeadLetters
+        expr: increase(notification_dead_lettered_total[5m]) > 0
+        labels: { severity: warning }
+        annotations:
+          summary: "A message was sent to the dead-letter topic"
+          description: "A message could not be processed after the retries. Inspect the ledger.transfers.DLT topic."

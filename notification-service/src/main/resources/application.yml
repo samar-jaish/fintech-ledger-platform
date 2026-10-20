@@ -1,8 +1,10 @@
+server:
+  port: 8083                         # serves only the operations endpoints (health, Prometheus); no business API
+  address: 127.0.0.1                 # this computer only when run from the IDE; the compose file opens it to the compose network
+
 spring:
   application:
     name: notification-service
-  main:
-    web-application-type: none      # no HTTP: this service only reacts to Kafka messages
   datasource:
     # Its own database (created by docker/postgres/init-notifications.sql), never the ledger's.
     url: ${NOTIFICATIONS_DB_URL:jdbc:postgresql://localhost:5432/notifications}
@@ -15,9 +17,36 @@ spring:
       auto-offset-reset: earliest
     producer:
       acks: all                     # used only to publish poison messages to the dead-letter topic
+    template:
+      observation-enabled: true
+    listener:
+      observation-enabled: true     # one span per consumed message, linked to the producer's trace
 
 notification:
   topic: ledger.transfers
   retry:
     interval-ms: 1000
     attempts: 3                     # retries before a message is sent to the dead-letter topic
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus   # nothing else is exposed (no env, beans, heapdump, loggers...)
+  endpoint:
+    health:
+      probes:
+        enabled: true                     # adds /actuator/health/liveness and /actuator/health/readiness
+      show-components: always             # list which parts are UP or DOWN, without internal details
+      group:
+        readiness:
+          include: readinessState,db      # "ready" means: can reach its database
+  metrics:
+    tags:
+      application: ${spring.application.name}   # every metric says which service it came from
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true        # lets Prometheus compute p95/p99 latency
+  tracing:
+    sampling:
+      probability: 0.0                    # off locally; docker compose (observability profile) sets it to 1.0

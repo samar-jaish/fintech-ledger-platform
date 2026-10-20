@@ -21,6 +21,8 @@ RUN --mount=type=cache,target=/root/.m2 mvn -B -ntp -pl ${MODULE} -DskipTests pa
 # ---- Stage 2: run ----
 FROM eclipse-temurin:21-jre
 ARG MODULE
+# curl is what the container health check uses (see docker-compose.yml). The base image normally has it; install it only if not.
+RUN command -v curl > /dev/null 2>&1 || (apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*)
 # Never run as root inside a container: a bug in the app should not hand out root.
 RUN useradd --system --uid 10001 --no-create-home app
 WORKDIR /app

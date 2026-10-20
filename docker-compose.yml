@@ -52,6 +52,13 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    healthcheck:
+      # Healthy when the broker answers an API-versions request.
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 > /dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 20s
 
   # ---- The applications. Off by default so "docker compose up -d" still starts only the infrastructure
   # (the Maven tests and running from the IDE use that). Start everything with:
@@ -63,14 +70,23 @@ services:
       dockerfile: docker/Dockerfile
       args:
         MODULE: ledger-service
-    ports: ["8080:8080"]
+    ports:
+      - "8080:8080"
+      - "127.0.0.1:9080:9080"   # operations port (health, Prometheus): this computer only, never the network
     mem_limit: 768m
     restart: on-failure
+    healthcheck:
+      # Ready = the app is up and can reach its database (the readiness group in application.yml).
+      test: ["CMD", "curl", "-fsS", "http://localhost:9080/actuator/health/readiness"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 40s
     depends_on:
       postgres:
         condition: service_healthy
       kafka:
-        condition: service_started
+        condition: service_healthy
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/ledger
       KAFKA_BOOTSTRAP_SERVERS: kafka:19092
@@ -78,6 +94,10 @@ services:
       # Tokens say they were issued by localhost:8180 (see KC_HOSTNAME above); the keys are fetched over the container network.
       KEYCLOAK_ISSUER_URI: http://localhost:8180/realms/ledger
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWKSETURI: http://keycloak:8180/realms/ledger/protocol/openid-connect/certs
+      # Tracing: record every request and send the traces to Jaeger (see the jaeger service below).
+      MANAGEMENT_SERVER_ADDRESS: 0.0.0.0   # listen on the compose network so Prometheus can scrape (the host port is 127.0.0.1 only)
+      MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
+      MANAGEMENT_OTLP_TRACING_ENDPOINT: http://jaeger:4318/v1/traces
 
   trading-service:
     profiles: ["apps"]
@@ -86,14 +106,22 @@ services:
       dockerfile: docker/Dockerfile
       args:
         MODULE: trading-service
-    ports: ["8082:8082"]
+    ports:
+      - "8082:8082"
+      - "127.0.0.1:9082:9082"   # operations port (health, Prometheus): this computer only
     mem_limit: 768m
     restart: on-failure
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:9082/actuator/health/readiness"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 40s
     depends_on:
       postgres:
         condition: service_healthy
       ledger-service:
-        condition: service_started
+        condition: service_healthy   # started is not enough: wait until the ledger answers its readiness check
     environment:
       TRADING_DB_URL: jdbc:postgresql://postgres:5432/trading
       LEDGER_BASE_URL: http://ledger-service:8080
@@ -102,6 +130,9 @@ services:
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWKSETURI: http://keycloak:8180/realms/ledger/protocol/openid-connect/certs
       REDIS_HOST: redis
       MARKET_CACHE_ENABLED: "true"
+      MANAGEMENT_SERVER_ADDRESS: 0.0.0.0
+      MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
+      MANAGEMENT_OTLP_TRACING_ENDPOINT: http://jaeger:4318/v1/traces
 
   notification-service:
     profiles: ["apps"]
@@ -110,16 +141,61 @@ services:
       dockerfile: docker/Dockerfile
       args:
         MODULE: notification-service
+    ports: ["127.0.0.1:8083:8083"]   # operations port only (health, Prometheus); this service has no business API
     mem_limit: 768m
     restart: on-failure
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8083/actuator/health/readiness"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 40s
     depends_on:
       postgres:
         condition: service_healthy
       kafka:
-        condition: service_started
+        condition: service_healthy
     environment:
       NOTIFICATIONS_DB_URL: jdbc:postgresql://postgres:5432/notifications
       KAFKA_BOOTSTRAP_SERVERS: kafka:19092
+      SERVER_ADDRESS: 0.0.0.0
+      MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
+      MANAGEMENT_OTLP_TRACING_ENDPOINT: http://jaeger:4318/v1/traces
+
+  # ---- Observability. Start it next to the apps:
+  #   docker compose --profile apps --profile observability up -d --build
+  # Jaeger (traces) is also part of the apps profile because every app sends traces to it.
+  jaeger:
+    profiles: ["apps", "observability"]
+    image: jaegertracing/jaeger:2.8.0
+    ports: ["16686:16686"]          # UI: http://localhost:16686 (the OTLP port 4318 is used only inside the compose network)
+    mem_limit: 512m
+
+  prometheus:
+    profiles: ["observability"]
+    image: prom/prometheus:v3.5.0
+    ports: ["9090:9090"]            # UI: http://localhost:9090
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./docker/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+    mem_limit: 512m
+
+  # Local development settings: admin/admin, and anyone may view dashboards without logging in.
+  grafana:
+    profiles: ["observability"]
+    image: grafana/grafana:12.1.0
+    ports: ["3000:3000"]            # UI: http://localhost:3000
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/ledger-platform.json
+    volumes:
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./docker/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on: [prometheus]
+    mem_limit: 512m
 
 volumes:
   pgdata:
