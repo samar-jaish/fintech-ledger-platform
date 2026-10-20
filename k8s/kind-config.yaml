@@ -1,0 +1,17 @@
+# A one-node Kubernetes cluster that runs as a Docker container. Create it with:
+#   kind create cluster --name ledger --config k8s/kind-config.yaml
+# The port mappings publish selected NodePorts of the cluster on this computer (127.0.0.1 only), so the same addresses
+# work as with Docker Compose: the API on 8080 and 8082, Keycloak on 8180, Jaeger on 16686, the operations ports on
+# 9080, 9082 and 8083. Stop Docker Compose first: both use these host ports.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      - { containerPort: 30080, hostPort: 8080, listenAddress: "127.0.0.1", protocol: TCP }    # ledger API
+      - { containerPort: 30082, hostPort: 8082, listenAddress: "127.0.0.1", protocol: TCP }    # trading API
+      - { containerPort: 30180, hostPort: 8180, listenAddress: "127.0.0.1", protocol: TCP }    # Keycloak
+      - { containerPort: 30686, hostPort: 16686, listenAddress: "127.0.0.1", protocol: TCP }   # Jaeger UI
+      - { containerPort: 30090, hostPort: 9080, listenAddress: "127.0.0.1", protocol: TCP }    # ledger operations port
+      - { containerPort: 30092, hostPort: 9082, listenAddress: "127.0.0.1", protocol: TCP }    # trading operations port
+      - { containerPort: 30083, hostPort: 8083, listenAddress: "127.0.0.1", protocol: TCP }    # notification (operations only)

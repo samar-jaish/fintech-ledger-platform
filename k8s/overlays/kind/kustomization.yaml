@@ -1,0 +1,22 @@
+# The local cluster made by kind. It differs from the base in two ways:
+#  - some Services become NodePorts, which k8s/kind-config.yaml publishes on this computer (127.0.0.1), so you can call
+#    the API, Keycloak and Jaeger as you do with Docker Compose;
+#  - the images are the ones built locally and loaded into the cluster (tag "dev"). A real environment would set the
+#    commit-id tag published by CI here, for example: newName: ghcr.io/samar-jaish/fintech-ledger-platform/ledger-service
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+patches:
+  - path: patches/ledger-service.yaml
+  - path: patches/trading-service.yaml
+  - path: patches/notification-service.yaml
+  - path: patches/keycloak.yaml
+  - path: patches/jaeger.yaml
+images:
+  - name: ledger-service
+    newTag: dev
+  - name: trading-service
+    newTag: dev
+  - name: notification-service
+    newTag: dev

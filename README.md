@@ -134,7 +134,7 @@ ledger runs without Kafka.
 
 ## Tech stack
 
-Java 21, Spring Boot 3.5 (JDBC), PostgreSQL 16, Flyway, Redis, Resilience4j, JUnit 5, Mockito, Testcontainers, Datafaker, Docker Compose, GitHub Actions, Micrometer, Prometheus, Grafana, OpenTelemetry, Jaeger.
+Java 21, Spring Boot 3.5 (JDBC), PostgreSQL 16, Flyway, Redis, Resilience4j, JUnit 5, Mockito, Testcontainers, Datafaker, Docker Compose, GitHub Actions, Micrometer, Prometheus, Grafana, OpenTelemetry, Jaeger, Kubernetes (kind, Kustomize).
 
 ## Getting started
 
@@ -189,6 +189,24 @@ dead-lettered messages. Six alert rules (service down, 5xx rate, breaker open, t
 letters) are evaluated by Prometheus. Requests are traced across services, so one trade shows as a single trace through
 trading-service and ledger-service. The health and metrics endpoints use a separate management port that is not part of
 the public API. Design notes: [ADR 0015](docs/adr/0015-observability.md).
+
+### Kubernetes (local)
+
+The same platform runs on a local Kubernetes cluster made by [kind](https://kind.sigs.k8s.io). Needs Docker, `kind` and
+`kubectl`; stop Docker Compose first because both use the same host ports.
+
+```bash
+bash scripts/kind-up.sh      # creates the cluster, builds and loads the images, deploys everything, waits until ready
+bash scripts/smoke-test.sh   # same end-to-end check as in CI (set NOTIFICATION_LOGS_CMD="kubectl -n ledger logs deploy/notification-service")
+kubectl -n ledger get pods
+bash scripts/kind-down.sh    # deletes the cluster
+```
+
+The manifests in `k8s/base` are cluster-neutral (Deployments with startup, liveness and readiness probes, resource requests
+and limits, a non-root read-only container, rolling updates that never reduce capacity, a StatefulSet for Postgres, Services,
+a ConfigMap and a Secret). `k8s/overlays/kind` adds what is specific to the local cluster: NodePorts published on this
+computer and the local image tag. The API is at http://localhost:8080 and :8082, Keycloak at :8180, Jaeger at :16686.
+CI creates a kind cluster and runs the smoke test against it too. Design notes: [ADR 0016](docs/adr/0016-kubernetes-with-kind.md).
 
 ## Testing
 
@@ -247,5 +265,7 @@ ledger-service/            ledger, REST API, security, nightly close, outbox pub
 trading-service/           trades (saga), holdings, market data, portfolio; own database
 notification-service/      Kafka consumer with its own database
 docker/                    Dockerfile, Keycloak realm, Postgres init script, Prometheus and Grafana configuration
+k8s/                       Kubernetes manifests (Kustomize base and a kind overlay) and the kind cluster config
+scripts/                   smoke test, kind-up and kind-down
 docs/                      ADRs and roadmap
 ```

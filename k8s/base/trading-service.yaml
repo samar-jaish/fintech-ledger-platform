@@ -1,0 +1,86 @@
+# Trading API and the trade saga. It calls the ledger by its Service name and keeps its own database.
+apiVersion: v1
+kind: Service
+metadata:
+  name: trading-service
+  labels: { app: trading-service }
+spec:
+  selector: { app: trading-service }
+  ports:
+    - { name: http, port: 8082, targetPort: http }
+    - { name: ops, port: 9082, targetPort: ops }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: trading-service
+  labels: { app: trading-service }
+spec:
+  replicas: 1
+  # A new pod must be ready before an old one is removed, so a deployment never reduces capacity.
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: { maxUnavailable: 0, maxSurge: 1 }
+  selector:
+    matchLabels: { app: trading-service }
+  template:
+    metadata:
+      labels: { app: trading-service }
+      annotations:
+        # The convention many Prometheus setups use to find what to scrape.
+        prometheus.io/scrape: "true"
+        prometheus.io/path: /actuator/prometheus
+        prometheus.io/port: "9082"
+    spec:
+      enableServiceLinks: false
+      terminationGracePeriodSeconds: 45     # time to finish in-flight requests after SIGTERM (Spring Boot shuts down gracefully)
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001                    # the "app" user created in docker/Dockerfile
+        runAsGroup: 10001
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: trading-service
+          image: trading-service                     # the tag is set by the overlay (kustomize "images")
+          imagePullPolicy: IfNotPresent
+          ports: [{ name: http, containerPort: 8082 }, { name: ops, containerPort: 9082 }]
+          envFrom:
+            - configMapRef: { name: platform-config }
+          env:
+            # The operations port must listen on the pod's network address so the kubelet (probes) and Prometheus can reach it.
+            - { name: MANAGEMENT_SERVER_ADDRESS, value: 0.0.0.0 }
+            - { name: TRADING_DB_URL, value: jdbc:postgresql://postgres:5432/trading }
+            - { name: TRADING_DB_USER, value: ledger }
+            - name: TRADING_DB_PASSWORD
+              valueFrom: { secretKeyRef: { name: platform-secrets, key: db-password } }
+            - { name: LEDGER_BASE_URL, value: http://ledger-service:8080 }
+            - { name: REDIS_HOST, value: redis }
+            - { name: MARKET_CACHE_ENABLED, value: "true" }
+            - name: TRADING_CLIENT_SECRET
+              valueFrom: { secretKeyRef: { name: platform-secrets, key: trading-client-secret } }
+          # Startup: give the JVM time to boot before the other probes begin. Liveness: restart the container if it is
+          # stuck (checks nothing outside the process). Readiness: send traffic only while the service can use its database.
+          startupProbe:
+            httpGet: { path: /actuator/health/liveness, port: ops }
+            periodSeconds: 5
+            failureThreshold: 30
+          livenessProbe:
+            httpGet: { path: /actuator/health/liveness, port: ops }
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet: { path: /actuator/health/readiness, port: ops }
+            periodSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests: { cpu: 100m, memory: 384Mi }
+            limits: { memory: 768Mi }      # no CPU limit: throttling slows JVM start-up
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }   # the only writable path
+      volumes:
+        - name: tmp
+          emptyDir: {}

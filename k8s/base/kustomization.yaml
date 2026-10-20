@@ -1,0 +1,21 @@
+# Everything the platform needs inside a cluster, with no assumptions about which cluster it is.
+# Environment differences (how it is reached from outside, which image tag) belong in an overlay.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: ledger
+resources:
+  - namespace.yaml
+  - config.yaml
+  - secrets.yaml
+  - postgres.yaml
+  - kafka.yaml
+  - keycloak.yaml
+  - redis.yaml
+  - jaeger.yaml
+  - ledger-service.yaml
+  - trading-service.yaml
+  - notification-service.yaml
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: ledger-platform
+    includeSelectors: false

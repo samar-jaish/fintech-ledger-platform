@@ -1,0 +1,60 @@
+# Local identity provider with the demo realm. Development settings and demo users only: never use this in production.
+# The ConfigMap "keycloak-realm" is created by scripts/kind-up.sh from docker/keycloak/ledger-realm.json.
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak
+  labels: { app: keycloak }
+spec:
+  selector: { app: keycloak }
+  ports:
+    - { name: http, port: 8180, targetPort: http }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keycloak
+  labels: { app: keycloak }
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector:
+    matchLabels: { app: keycloak }
+  template:
+    metadata:
+      labels: { app: keycloak }
+    spec:
+      enableServiceLinks: false      # a Service called "keycloak" would otherwise inject KEYCLOAK_* variables Keycloak reads as settings
+      containers:
+        - name: keycloak
+          image: quay.io/keycloak/keycloak:26.0
+          args: ["start-dev", "--import-realm", "--http-port=8180"]
+          ports:
+            - { name: http, containerPort: 8180 }
+          env:
+            - { name: KC_BOOTSTRAP_ADMIN_USERNAME, value: admin }
+            - name: KC_BOOTSTRAP_ADMIN_PASSWORD
+              valueFrom: { secretKeyRef: { name: platform-secrets, key: keycloak-admin-password } }
+            # Fixes the address Keycloak puts in tokens (the "iss" claim) so it is the same whether a token is requested
+            # from this computer (localhost:8180) or from another pod (keycloak:8180).
+            - { name: KC_HOSTNAME, value: "http://localhost:8180" }
+          # Ready only when the demo realm has been imported and answers.
+          startupProbe:
+            httpGet: { path: /realms/ledger/.well-known/openid-configuration, port: http }
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet: { path: /realms/ledger/.well-known/openid-configuration, port: http }
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket: { port: http }
+            periodSeconds: 10
+            failureThreshold: 6
+          resources:
+            requests: { cpu: 300m, memory: 512Mi }
+            limits: { memory: 1Gi }
+          volumeMounts:
+            - { name: realm, mountPath: /opt/keycloak/data/import, readOnly: true }
+      volumes:
+        - name: realm
+          configMap: { name: keycloak-realm }

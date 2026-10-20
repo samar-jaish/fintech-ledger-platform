@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak
+  namespace: ledger
+spec:
+  type: NodePort
+  ports:
+    - { name: http, port: 8180, nodePort: 30180 }

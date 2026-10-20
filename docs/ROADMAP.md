@@ -14,7 +14,8 @@
 | 4a | Dockerfile per service, one-command start of the whole platform with Docker Compose (done) | Docker, Docker Compose |
 | 4b | CI: tests, an end-to-end smoke test of the containers, and image publishing (done) | GitHub Actions, GHCR |
 | 4c | Health checks, metrics, dashboards, alerts and tracing (done) | Spring Boot Actuator, Micrometer, Prometheus, Grafana, OpenTelemetry, Jaeger |
-| 4d | Kubernetes locally, then Azure | kind/k3s locally; Azure Container Apps + Postgres Flexible Server (free allowances); Bicep or Terraform |
+| 4d | Kubernetes locally (done) | kind, kubectl, Kustomize |
+| 4e | Azure: Container Apps + Postgres Flexible Server with Terraform (check the free-services page, set a budget alert, delete the resource group after each demo) | Azure, Terraform |
 | 5 | Lucene+Tika, RAG, Presidio PII masking | pgvector, Ollama (local LLM), Presidio sidecar |
 
 Azure rule: check the free-services page before creating anything, set a budget alert, and delete the

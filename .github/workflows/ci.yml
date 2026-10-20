@@ -54,6 +54,36 @@ jobs:
         if: always()
         run: docker compose --profile apps --profile observability down -v
 
+  # 2b. The same end-to-end check, but on Kubernetes: a kind cluster is created, the manifests in k8s/ are applied and the
+  #     same smoke test runs against it. This proves the images, probes, Services and settings work in a cluster.
+  #     It runs in parallel with the Compose smoke test and is not required for publishing images (yet).
+  kubernetes:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - name: Create a kind cluster
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: ledger
+          config: k8s/kind-config.yaml
+      - name: Build the images and deploy to the cluster
+        run: bash scripts/kind-up.sh
+      - name: Smoke test
+        run: bash scripts/smoke-test.sh
+        env:
+          CHECK_TRACING: 'true'
+          NOTIFICATION_LOGS_CMD: kubectl -n ledger logs deploy/notification-service
+      - name: Show cluster state when something failed
+        if: failure()
+        run: |
+          kubectl -n ledger get pods -o wide
+          kubectl -n ledger describe pods | tail -150
+          for d in ledger-service trading-service notification-service keycloak kafka postgres; do
+            echo "----- $d"; kubectl -n ledger logs "deploy/$d" --tail=80 2>&1 || kubectl -n ledger logs "statefulset/$d" --tail=80 2>&1 || true
+          done
+
   # 3. Publish the images to GitHub's container registry, only for commits on master that passed everything above.
   images:
     needs: smoke

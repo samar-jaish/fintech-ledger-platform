@@ -1,0 +1,63 @@
+# One Postgres with three databases (ledger, notifications, trading; created by the init script). Local development only:
+# a single replica. The data lives on a PersistentVolumeClaim, so it survives pod restarts.
+# The ConfigMap "postgres-init" is created by scripts/kind-up.sh from docker/postgres/init-databases.sql.
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  labels: { app: postgres }
+spec:
+  clusterIP: None          # headless: the name resolves straight to the pod
+  selector: { app: postgres }
+  ports:
+    - { name: pg, port: 5432, targetPort: pg }
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  labels: { app: postgres }
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector:
+    matchLabels: { app: postgres }
+  template:
+    metadata:
+      labels: { app: postgres }
+    spec:
+      enableServiceLinks: false
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - { name: pg, containerPort: 5432 }
+          env:
+            - { name: POSTGRES_DB, value: ledger }
+            - { name: POSTGRES_USER, value: ledger }
+            - name: POSTGRES_PASSWORD
+              valueFrom: { secretKeyRef: { name: platform-secrets, key: db-password } }
+            - { name: PGDATA, value: /var/lib/postgresql/data/pgdata }
+          readinessProbe:
+            exec: { command: ["pg_isready", "-U", "ledger", "-d", "ledger"] }
+            periodSeconds: 5
+          livenessProbe:
+            exec: { command: ["pg_isready", "-U", "ledger", "-d", "ledger"] }
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { memory: 512Mi }
+          volumeMounts:
+            - { name: data, mountPath: /var/lib/postgresql/data }
+            - { name: init, mountPath: /docker-entrypoint-initdb.d, readOnly: true }
+      volumes:
+        - name: init
+          configMap: { name: postgres-init }
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests: { storage: 1Gi }

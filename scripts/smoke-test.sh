@@ -14,9 +14,16 @@ NOTIFY_OPS=${NOTIFY_OPS_URL:-http://localhost:8083}
 PROMETHEUS=${PROMETHEUS_URL:-http://localhost:9090}
 GRAFANA=${GRAFANA_URL:-http://localhost:3000}
 JAEGER=${JAEGER_URL:-http://localhost:16686}
-# Set CHECK_OBSERVABILITY=true when Prometheus, Grafana and Jaeger are running too (--profile observability).
+# CHECK_OBSERVABILITY=true: Prometheus, Grafana and Jaeger are running too (--profile observability).
+# CHECK_TRACING=true: only Jaeger is running (the Kubernetes setup).
 COMPOSE="docker compose --profile apps"
 RUN_ID=$RANDOM$RANDOM
+
+# Where to read the notification service's log. Docker Compose by default; for Kubernetes set
+# NOTIFICATION_LOGS_CMD="kubectl -n ledger logs deploy/notification-service".
+notification_logs() {
+  if [ -n "${NOTIFICATION_LOGS_CMD:-}" ]; then $NOTIFICATION_LOGS_CMD; else $COMPOSE logs notification-service; fi
+}
 
 step() { echo; echo "== $*"; }
 fail() { echo "SMOKE TEST FAILED: $*" >&2; exit 1; }
@@ -96,7 +103,7 @@ step "The transfer event reached the notification service through Kafka"
 NOTIFIED=false
 for _ in $(seq 1 30); do
   # Read the logs into a variable first: grep -q closes the pipe early, which would make "set -o pipefail" report a failure.
-  LOGS=$($COMPOSE logs notification-service 2>&1 || true)
+  LOGS=$(notification_logs 2>&1 || true)
   if grep -q "NOTIFY: Transfer" <<< "$LOGS"; then
     NOTIFIED=true
     break
@@ -153,7 +160,9 @@ if [ "${CHECK_OBSERVABILITY:-false}" = "true" ]; then
     sleep 3
   done
   [ "$FOUND" -ge 1 ] 2>/dev/null || fail "the 'Ledger platform' dashboard was not found in Grafana"
+fi
 
+if [ "${CHECK_OBSERVABILITY:-false}" = "true" ] || [ "${CHECK_TRACING:-false}" = "true" ]; then
   step "Jaeger shows one trace that crosses trading-service and ledger-service"
   CROSS=0
   for _ in $(seq 1 30); do
