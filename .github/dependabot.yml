@@ -25,3 +25,9 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "eclipse-temurin"
         update-types: ["version-update:semver-major"]
+  - package-ecosystem: npm
+    directory: "/ui"
+    schedule: { interval: monthly }
+    groups:
+      ui-dependencies:
+        update-types: ["minor", "patch"]

@@ -148,6 +148,12 @@ mvn -pl trading-service spring-boot:run       # trades and portfolio (needs the 
 mvn -pl notification-service spring-boot:run  # optional: consumes transfer events
 ```
 
+### Tools to install on your computer
+
+Docker runs the servers (Postgres, Kafka and so on), but these tools run on your computer: Java 21 and Maven (build and
+tests), Docker Desktop, Node 22+ (web UI), and for Kubernetes `kind` and `kubectl`. The smoke test also needs `curl` and `jq`
+(Git Bash on Windows provides `curl`; install `jq` with `winget install jqlang.jq`).
+
 ### Everything in containers
 
 ```bash
@@ -208,6 +214,23 @@ a ConfigMap and a Secret). `k8s/overlays/kind` adds what is specific to the loca
 computer and the local image tag. The API is at http://localhost:8080 and :8082, Keycloak at :8180, Jaeger at :16686.
 CI creates a kind cluster and runs the smoke test against it too. Design notes: [ADR 0016](docs/adr/0016-kubernetes-with-kind.md).
 
+### Web UI
+
+A React + TypeScript app (Vite) in `ui/`. Sign in goes through Keycloak (authorization code flow with PKCE), then the page
+calls the APIs with your access token. Needs Node 22 or newer.
+
+```bash
+docker compose --profile apps up -d --build   # the platform (see above)
+cd ui
+npm install
+npm run dev                                   # http://localhost:5173
+npm test                                      # unit and component tests
+```
+
+Sign in as `alice` / `alice123`. The APIs allow calls from `http://localhost:5173` (CORS); see
+[ADR 0017](docs/adr/0017-web-ui-and-browser-login.md). If you started Keycloak before the UI client existed, recreate it so it
+reads the realm file again: `docker compose up -d --force-recreate keycloak`.
+
 ## Testing
 
 - Unit tests run the business logic against a mocked repository.
@@ -264,6 +287,7 @@ ledger-service/            ledger, REST API, security, nightly close, outbox pub
   src/test/java                     unit, integration and benchmark tests
 trading-service/           trades (saga), holdings, market data, portfolio; own database
 notification-service/      Kafka consumer with its own database
+ui/                        web UI: React, TypeScript, Vite (Keycloak login, calls the APIs)
 docker/                    Dockerfile, Keycloak realm, Postgres init script, Prometheus and Grafana configuration
 k8s/                       Kubernetes manifests (Kustomize base and a kind overlay) and the kind cluster config
 scripts/                   smoke test, kind-up and kind-down

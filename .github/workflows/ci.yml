@@ -33,6 +33,25 @@ jobs:
             **/target/surefire-reports
             **/target/failsafe-reports
 
+  # The web UI: types, unit tests and a production build. Independent of the Java jobs, so it runs in parallel with them.
+  ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: ui
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
   # 2. Build the three images, start the whole platform (plus Prometheus, Grafana and Jaeger) with Docker Compose and run
   #    real requests against it, including checks on health, metrics, dashboards and traces.
   smoke:

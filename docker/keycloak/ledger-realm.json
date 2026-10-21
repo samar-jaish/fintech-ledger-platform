@@ -21,6 +21,22 @@
   },
   "clients": [
     {
+      "clientId": "ledger-ui",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "redirectUris": ["http://localhost:5173/*", "http://localhost:8085/*"],
+      "webOrigins": ["http://localhost:5173", "http://localhost:8085"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:5173/*##http://localhost:8085/*"
+      },
+      "description": "The web UI: browser login with the authorization code flow and PKCE. No client secret exists because a browser cannot keep one."
+    },
+    {
       "clientId": "ledger-api",
       "enabled": true,
       "publicClient": true,

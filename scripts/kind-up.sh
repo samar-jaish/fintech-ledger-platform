@@ -33,8 +33,9 @@ kubectl -n "$NAMESPACE" create configmap keycloak-realm --from-file=docker/keycl
 
 step "Deploy everything"
 kubectl apply -k k8s/overlays/kind
-# Pods keep running the image they started with, so a rebuilt image needs a restart to be picked up.
-kubectl -n "$NAMESPACE" rollout restart deployment/ledger-service deployment/trading-service deployment/notification-service
+# Pods keep running the image they started with, so a rebuilt image needs a restart to be picked up. Keycloak is restarted
+# too: it reads the realm file only when it starts, so a changed realm (for example a new client) is otherwise ignored.
+kubectl -n "$NAMESPACE" rollout restart deployment/ledger-service deployment/trading-service deployment/notification-service deployment/keycloak
 
 step "Wait until everything is ready (the first start downloads images and can take several minutes)"
 kubectl -n "$NAMESPACE" rollout status statefulset/postgres --timeout=300s

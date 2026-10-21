@@ -96,6 +96,7 @@ services:
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWKSETURI: http://keycloak:8180/realms/ledger/protocol/openid-connect/certs
       # Tracing: record every request and send the traces to Jaeger (see the jaeger service below).
       MANAGEMENT_SERVER_ADDRESS: 0.0.0.0   # listen on the compose network so Prometheus can scrape (the host port is 127.0.0.1 only)
+      APP_CORS_ALLOWED_ORIGINS: http://localhost:5173,http://localhost:8085   # the web UI (dev server and the container, Phase 5)
       MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
       MANAGEMENT_OTLP_TRACING_ENDPOINT: http://jaeger:4318/v1/traces
 
@@ -131,6 +132,7 @@ services:
       REDIS_HOST: redis
       MARKET_CACHE_ENABLED: "true"
       MANAGEMENT_SERVER_ADDRESS: 0.0.0.0
+      APP_CORS_ALLOWED_ORIGINS: http://localhost:5173,http://localhost:8085   # the web UI (dev server and the container, Phase 5)
       MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
       MANAGEMENT_OTLP_TRACING_ENDPOINT: http://jaeger:4318/v1/traces
 

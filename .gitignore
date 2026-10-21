@@ -19,3 +19,10 @@ application-local.properties
 log/
 logs/
 *.log
+
+# Web UI (Phase 5)
+node_modules/
+ui/dist/
+ui/.env.local
+*.tsbuildinfo
+coverage/
