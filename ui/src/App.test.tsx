@@ -1,26 +1,29 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 import { ApiError } from './api/client';
 import type { AuthState } from './auth/AuthContext';
+import { renderAt } from './test/render';
 
 // The screens are tested against a fake session and a fake API: no browser login, no network.
-const login = vi.fn();
-const logout = vi.fn();
-let state: AuthState;
-
+const auth = vi.hoisted(() => ({ state: { status: 'anonymous' } as AuthState, login: vi.fn(), logout: vi.fn() }));
 vi.mock('./auth/AuthContext', () => ({
-  useAuth: () => ({ state, login, logout, getToken: () => 'token-1' }),
+  useAuth: () => ({ state: auth.state, login: auth.login, logout: auth.logout, getToken: () => 'token-1' }),
 }));
 
-const createAccount = vi.fn();
-const getAccount = vi.fn();
-vi.mock('./api/ledger', () => ({
-  createAccount: (...args: unknown[]) => createAccount(...args),
-  getAccount: (...args: unknown[]) => getAccount(...args),
+const ledger = vi.hoisted(() => ({
+  listAccounts: vi.fn(),
+  createAccount: vi.fn(),
+  getAccount: vi.fn(),
+  deposit: vi.fn(),
+  transfer: vi.fn(),
+  getStatement: vi.fn(),
 }));
+vi.mock('./api/ledger', () => ledger);
+vi.mock('./api/trading', () => ({ getPortfolio: vi.fn(), getTrades: vi.fn(), placeTrade: vi.fn() }));
 
+const ID = '3f2a9c1e-5b7d-4e8a-9c21-7d4e5f6a8b90';
 const alice: AuthState = {
   status: 'authenticated',
   username: 'alice',
@@ -31,75 +34,105 @@ const alice: AuthState = {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  state = { status: 'anonymous' };
+  auth.state = { status: 'anonymous' };
 });
 
 describe('signed out', () => {
   it('offers sign-in and starts the login when asked', async () => {
-    render(<App />);
+    renderAt('/', <App />);
     await userEvent.click(screen.getByRole('button', { name: 'Sign in' }));
-    expect(login).toHaveBeenCalledOnce();
+    expect(auth.login).toHaveBeenCalledOnce();
     expect(screen.queryByRole('button', { name: 'Sign out' })).not.toBeInTheDocument();
   });
 
+  it('shows no account screens, even at an account address', () => {
+    renderAt(`/accounts/${ID}`, <App />);
+    expect(screen.getByRole('button', { name: 'Sign in' })).toBeInTheDocument();
+    expect(ledger.getAccount).not.toHaveBeenCalled();
+  });
+
   it('shows a loading message while the session is checked', () => {
-    state = { status: 'loading' };
-    render(<App />);
+    auth.state = { status: 'loading' };
+    renderAt('/', <App />);
     expect(screen.getByText(/checking your session/i)).toBeInTheDocument();
   });
 
   it('shows why sign-in failed and lets the user retry', async () => {
-    state = { status: 'error', message: 'State mismatch' };
-    render(<App />);
+    auth.state = { status: 'error', message: 'State mismatch' };
+    renderAt('/', <App />);
     expect(screen.getByRole('alert')).toHaveTextContent('State mismatch');
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
-    expect(login).toHaveBeenCalledOnce();
+    expect(auth.login).toHaveBeenCalledOnce();
   });
 });
 
-describe('signed in', () => {
+describe('signed in: accounts', () => {
   beforeEach(() => {
-    state = alice;
+    auth.state = alice;
   });
 
   it('shows who is signed in with their roles, and signs out', async () => {
-    render(<App />);
+    ledger.listAccounts.mockResolvedValue([]);
+    renderAt('/accounts', <App />);
     expect(screen.getByText('Alice Demo')).toBeInTheDocument();
     expect(screen.getByText('USER')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Sign out' }));
-    expect(logout).toHaveBeenCalledOnce();
+    expect(auth.logout).toHaveBeenCalledOnce();
   });
 
-  it('opens an account with the token and shows the result', async () => {
-    createAccount.mockResolvedValue({ id: 'acc-1', ownerName: 'Alice Demo', currency: 'USD', balance: 0 });
-    render(<App />);
-
-    await userEvent.click(screen.getByRole('button', { name: 'Open account' }));
-
-    expect(createAccount).toHaveBeenCalledWith('token-1', 'Alice Demo', 'USD');
-    const details = await screen.findByLabelText('Account details');
-    expect(details).toHaveTextContent('acc-1');
-    expect(details).toHaveTextContent('0.00 USD');
+  it('sends the front page to the accounts list', async () => {
+    ledger.listAccounts.mockResolvedValue([]);
+    renderAt('/', <App />);
+    expect(await screen.findByRole('heading', { name: 'Your accounts' })).toBeInTheDocument();
   });
 
-  it('shows the server\'s reason when the call fails', async () => {
-    createAccount.mockRejectedValue(new ApiError(403, 'FORBIDDEN', 'You do not have permission to do this.'));
-    render(<App />);
+  it('lists the user\'s accounts with balances, each linking to its page', async () => {
+    ledger.listAccounts.mockResolvedValue([
+      { id: ID, ownerName: 'Alice Demo', currency: 'USD', balance: 1000 },
+      { id: 'b0000000-0000-4000-8000-000000000000', ownerName: 'Savings', currency: 'EUR', balance: '12.5' },
+    ]);
+    renderAt('/accounts', <App />);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Open account' }));
-
-    expect(await screen.findByRole('alert')).toHaveTextContent('You do not have permission');
+    const first = await screen.findByRole('link', { name: /Alice Demo/ });
+    expect(first).toHaveAttribute('href', `/accounts/${ID}`);
+    expect(first).toHaveTextContent('$1,000.00');
+    expect(screen.getByRole('link', { name: /Savings/ })).toHaveTextContent('€12.50');
+    expect(ledger.listAccounts).toHaveBeenCalledWith('token-1');
   });
 
-  it('refreshes the balance of the opened account', async () => {
-    createAccount.mockResolvedValue({ id: 'acc-1', ownerName: 'Alice Demo', currency: 'USD', balance: 0 });
-    getAccount.mockResolvedValue({ id: 'acc-1', ownerName: 'Alice Demo', currency: 'USD', balance: '125.5' });
-    render(<App />);
-    await userEvent.click(screen.getByRole('button', { name: 'Open account' }));
+  it('invites a new user to open a first account', async () => {
+    ledger.listAccounts.mockResolvedValue([]);
+    renderAt('/accounts', <App />);
+    expect(await screen.findByText(/no accounts yet/i)).toBeInTheDocument();
+  });
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Refresh balance' }));
+  it('says so when the accounts cannot be loaded', async () => {
+    ledger.listAccounts.mockRejectedValue(new ApiError(0, 'NETWORK', 'Could not reach the server. Is the platform running?'));
+    renderAt('/accounts', <App />);
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not reach the server');
+  });
 
-    expect(getAccount).toHaveBeenCalledWith('token-1', 'acc-1');
-    expect(await screen.findByLabelText('Account details')).toHaveTextContent('125.50 USD');
+  it('opens an account and goes to its page', async () => {
+    const created = { id: ID, ownerName: 'Alice Demo', currency: 'USD', balance: 0 };
+    ledger.listAccounts.mockResolvedValue([]);
+    ledger.createAccount.mockResolvedValue(created);
+    ledger.getAccount.mockResolvedValue(created);
+    ledger.getStatement.mockResolvedValue([]);
+    renderAt('/accounts', <App />);
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Open account' }));
+
+    expect(ledger.createAccount).toHaveBeenCalledWith('token-1', 'Alice Demo', 'USD');
+    expect(await screen.findByLabelText('Balance')).toHaveTextContent('$0.00');
+  });
+
+  it('shows the server\'s reason when opening fails', async () => {
+    ledger.listAccounts.mockResolvedValue([]);
+    ledger.createAccount.mockRejectedValue(new ApiError(400, 'INVALID_REQUEST', 'currency must be a 3-letter upper-case code, e.g. USD'));
+    renderAt('/accounts', <App />);
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Open account' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('currency must be a 3-letter');
   });
 });

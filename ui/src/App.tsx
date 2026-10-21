@@ -1,5 +1,7 @@
+import { NavLink, Route, Routes } from 'react-router';
 import { useAuth } from './auth/AuthContext';
-import { AccountPanel } from './components/AccountPanel';
+import { AccountPage, MoneyTab, TradingTab, UnknownRoute } from './pages/AccountPage';
+import { AccountsPage } from './pages/AccountsPage';
 
 export default function App() {
   const { state, login, logout } = useAuth();
@@ -10,6 +12,11 @@ export default function App() {
         <div className="brand">
           <span className="logo" aria-hidden="true" />
           Ledger Platform
+          {state.status === 'authenticated' && (
+            <nav className="mainnav" aria-label="Main">
+              <NavLink to="/accounts">Accounts</NavLink>
+            </nav>
+          )}
         </div>
         {state.status === 'authenticated' && (
           <div className="who">
@@ -55,7 +62,16 @@ export default function App() {
           </section>
         )}
 
-        {state.status === 'authenticated' && <AccountPanel />}
+        {state.status === 'authenticated' && (
+          <Routes>
+            <Route path="/accounts" element={<AccountsPage />} />
+            <Route path="/accounts/:id" element={<AccountPage />}>
+              <Route index element={<MoneyTab />} />
+              <Route path="trading" element={<TradingTab />} />
+            </Route>
+            <Route path="*" element={<UnknownRoute />} />
+          </Routes>
+        )}
       </main>
     </>
   );

@@ -82,6 +82,30 @@ class ApiIntegrationTest {
     }
 
     @Test
+    void listMyAccounts_returnsOnlyTheCallersAccounts_oldestFirst() throws Exception {
+        String alice = newUser("alice");
+        String bob = newUser("bob");
+        String first = createAccount(alice);
+        String second = createAccount(alice);
+        createAccount(bob);
+        deposit(alice, second, "40");
+
+        mvc.perform(get("/api/v1/accounts").with(as(alice)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].id").value(first))
+                .andExpect(jsonPath("$[1].id").value(second))
+                .andExpect(jsonPath("$[1].balance").value(40.0));
+    }
+
+    @Test
+    void listMyAccounts_isEmptyForAUserWithNoAccounts() throws Exception {
+        mvc.perform(get("/api/v1/accounts").with(as(newUser("carol"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
     void depositThenGetAccount_showsBalance_andReplayDoesNotDoubleCredit() throws Exception {
         String alice = newUser("alice");
         String id = createAccount(alice);

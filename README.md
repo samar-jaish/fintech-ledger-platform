@@ -44,10 +44,12 @@ Start the database (`docker compose up -d`), then `mvn -pl ledger-service spring
 | Method and path | Purpose |
 |---|---|
 | `POST /api/v1/accounts` | Open an account (`ownerName`, `currency`) |
+| `GET /api/v1/accounts` | The signed-in user's own accounts, oldest first |
 | `GET /api/v1/accounts/{id}` | Balance |
 | `POST /api/v1/accounts/{id}/deposits` | Simulated cash-in from the house account (USD, header `Idempotency-Key`) |
 | `POST /api/v1/transfers` | Move money between accounts (header `Idempotency-Key`) |
 | `GET /api/v1/accounts/{id}/statement?limit=50` | Ledger entries, newest first |
+| `GET /api/v1/reconciliation` | Cached balances versus ledger entries (role `ADMIN`) |
 
 Trading endpoints are on the trading service (port 8082), same tokens and error format:
 
@@ -59,7 +61,6 @@ Trading endpoints are on the trading service (port 8082), same tokens and error 
 
 The ledger also has `/api/v1/internal/**` endpoints for other services (role `SERVICE`, obtained through the OAuth2
 client credentials flow). They are not for end users.
-| `GET /api/v1/reconciliation` | Cached balances versus ledger entries |
 
 Writes require an `Idempotency-Key` header. A repeated key returns the original result with 200 instead of 201.
 Errors use RFC 7807 (`application/problem+json`) with a stable `code`: 400 INVALID_REQUEST, 404 ACCOUNT_NOT_FOUND,
@@ -216,19 +217,21 @@ CI creates a kind cluster and runs the smoke test against it too. Design notes: 
 
 ### Web UI
 
-A React + TypeScript app (Vite) in `ui/`. Sign in goes through Keycloak (authorization code flow with PKCE), then the page
-calls the APIs with your access token. Needs Node 22 or newer.
+A React + TypeScript app (Vite) in `ui/`. Sign in goes through Keycloak (authorization code flow with PKCE), then the
+screens call the APIs with your access token: your accounts and balances, add money, send money, statement, portfolio, buy
+and sell, and trade history. Every money-moving form sends an idempotency key, so a retry cannot apply twice. Needs Node 22 or newer.
 
 ```bash
 docker compose --profile apps up -d --build   # the platform (see above)
 cd ui
 npm install
 npm run dev                                   # http://localhost:5173
-npm test                                      # unit and component tests
+npm test                                      # unit and component tests (no browser or network needed)
 ```
 
 Sign in as `alice` / `alice123`. The APIs allow calls from `http://localhost:5173` (CORS); see
-[ADR 0017](docs/adr/0017-web-ui-and-browser-login.md). If you started Keycloak before the UI client existed, recreate it so it
+[ADR 0017](docs/adr/0017-web-ui-and-browser-login.md) and
+[ADR 0018](docs/adr/0018-ui-screens-data-and-idempotency.md) for the screens. If you started Keycloak before the UI client existed, recreate it so it
 reads the realm file again: `docker compose up -d --force-recreate keycloak`.
 
 ## Testing

@@ -38,6 +38,12 @@ public class LedgerService {
         return repo.createAccount(ownerName, currency, false, ownerSubject);
     }
 
+    /** The accounts of one user, oldest first. Never includes house accounts, which have no owner. */
+    @Transactional(readOnly = true)
+    public List<Account> getAccountsOwnedBy(String ownerSubject) {
+        return repo.findAccountsByOwner(ownerSubject);
+    }
+
     @Transactional(readOnly = true)
     public boolean isOwnedBy(UUID accountId, String ownerSubject) {
         return repo.isOwnedBy(accountId, ownerSubject);

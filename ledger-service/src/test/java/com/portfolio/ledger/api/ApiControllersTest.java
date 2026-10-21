@@ -60,6 +60,29 @@ class ApiControllersTest {
     }
 
     @Test
+    void myAccounts_listsTheSignedInUsersAccounts() throws Exception {
+        when(ledger.getAccountsOwnedBy("alice")).thenReturn(List.of(
+                new Account(ID, "Alice", "USD", new BigDecimal("12.5000"), false),
+                new Account(OTHER, "Alice savings", "EUR", BigDecimal.ZERO, false)));
+
+        mvc.perform(get("/api/v1/accounts"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].id").value(ID.toString()))
+                .andExpect(jsonPath("$[0].balance").value(12.5))
+                .andExpect(jsonPath("$[1].currency").value("EUR"));
+    }
+
+    @Test
+    void myAccounts_isEmptyForANewUser() throws Exception {
+        when(ledger.getAccountsOwnedBy("alice")).thenReturn(List.of());
+
+        mvc.perform(get("/api/v1/accounts"))
+                .andExpect(status().isOk())
+                .andExpect(content().json("[]"));
+    }
+
+    @Test
     void createAccount_returns201_withLocation() throws Exception {
         when(ledger.openAccountFor("alice", "Alice", "USD")).thenReturn(new Account(ID, "Alice", "USD", BigDecimal.ZERO, false));
 

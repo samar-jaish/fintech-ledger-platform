@@ -83,6 +83,12 @@ public class JdbcLedgerRepository implements LedgerRepository {
     }
 
     @Override
+    public List<Account> findAccountsByOwner(String ownerSubject) {
+        return jdbc.sql("SELECT " + ACCOUNT_COLS + " FROM accounts WHERE owner_subject = :sub ORDER BY created_at, id")
+                .param("sub", ownerSubject).query(ACCOUNT_MAPPER).list();
+    }
+
+    @Override
     public List<Account> lockAccounts(Collection<UUID> ids) {
         return jdbc.sql("SELECT " + ACCOUNT_COLS + " FROM accounts WHERE id IN (:ids) ORDER BY id FOR UPDATE")
                 .param("ids", ids).query(ACCOUNT_MAPPER).list();

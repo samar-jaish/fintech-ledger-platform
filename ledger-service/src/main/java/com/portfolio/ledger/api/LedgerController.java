@@ -37,6 +37,12 @@ class LedgerController {
                 .body(AccountResponse.from(account));
     }
 
+    /** The signed-in user's own accounts (an admin also sees only their own here; other accounts are fetched by id). */
+    @GetMapping("/accounts")
+    List<AccountResponse> myAccounts(Authentication auth) {
+        return ledger.getAccountsOwnedBy(auth.getName()).stream().map(AccountResponse::from).toList();
+    }
+
     @GetMapping("/accounts/{id}")
     AccountResponse getAccount(Authentication auth, @PathVariable UUID id) {
         access.require(auth, id);

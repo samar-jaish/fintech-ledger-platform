@@ -21,6 +21,9 @@ public interface LedgerRepository {
 
     Optional<Account> findAccount(UUID id);
 
+    /** Accounts owned by one user (identity provider subject), oldest first. */
+    List<Account> findAccountsByOwner(String ownerSubject);
+
     /** Locks rows (SELECT ... FOR UPDATE) in a stable id order to avoid deadlocks. */
     List<Account> lockAccounts(Collection<UUID> ids);
 
