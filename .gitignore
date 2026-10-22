@@ -26,3 +26,5 @@ ui/dist/
 ui/.env.local
 *.tsbuildinfo
 coverage/
+ui/playwright-report/
+ui/test-results/

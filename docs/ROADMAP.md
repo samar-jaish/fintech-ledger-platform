@@ -18,7 +18,7 @@
 | - | Checkpoint: close the loop on Phases 1-4 (per-phase theory and practical docs, run everything once, fix what breaks) | Docs, your own machine |
 | 5a | UI foundation: React + Vite + TypeScript app, Keycloak login (OIDC authorization code with PKCE), CORS on the APIs (done) | React, Vite, keycloak-js or oidc-client-ts |
 | 5b | UI features: accounts list and balances, add and send money with idempotency keys, statement, trading, portfolio and trade history (done). Live notifications need a notification API first and move to 5d | React Router, TanStack Query |
-| 5c | UI delivery: nginx container, added to Compose and Kubernetes, component tests and browser tests in CI | nginx, Vitest, Playwright, GitHub Actions |
+| 5c | UI delivery: nginx container, added to Compose and Kubernetes, published to GHCR, and real-browser tests in CI (done; component tests came with 5a and 5b) | nginx, Vitest, Playwright, GitHub Actions |
 | 5d | Live notifications in the UI: a small notification API with its own security and CORS, pushed to the browser (server-sent events) | Spring Web, SSE |
 | - | Checkpoint: one theory page per technology learned so far, plus a plain-words glossary of every command | Docs |
 | 6 | Azure: Container Apps + Postgres Flexible Server with Terraform (check the free-services page, set a budget alert, delete the resource group after each demo) | Azure, Terraform |

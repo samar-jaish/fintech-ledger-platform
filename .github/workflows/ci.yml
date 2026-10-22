@@ -66,6 +66,29 @@ jobs:
         run: bash scripts/smoke-test.sh
         env:
           CHECK_OBSERVABILITY: 'true'
+      # A real browser (Chromium) drives the served UI: sign in at Keycloak, open accounts, move money, buy a share.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+      - name: Install the browser tests' dependencies and Chromium
+        working-directory: ui
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Browser tests
+        working-directory: ui
+        run: npm run e2e
+      - name: Keep the browser test report when something failed
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            ui/playwright-report
+            ui/test-results
+          retention-days: 7
       - name: Show container logs when something failed
         if: failure()
         run: docker compose --profile apps --profile observability logs --no-color --tail 200
@@ -115,7 +138,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        module: [ledger-service, notification-service, trading-service]
+        include:
+          - { module: ledger-service, context: ., file: docker/Dockerfile, args: MODULE=ledger-service }
+          - { module: notification-service, context: ., file: docker/Dockerfile, args: MODULE=notification-service }
+          - { module: trading-service, context: ., file: docker/Dockerfile, args: MODULE=trading-service }
+          - { module: ledger-ui, context: ui, file: ui/Dockerfile, args: "" }   # the web UI (built for the local addresses)
     steps:
       - uses: actions/checkout@v7
       - uses: docker/setup-buildx-action@v4
@@ -133,9 +160,9 @@ jobs:
             type=raw,value=latest
       - uses: docker/build-push-action@v7
         with:
-          context: .
-          file: docker/Dockerfile
-          build-args: MODULE=${{ matrix.module }}
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          build-args: ${{ matrix.args }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

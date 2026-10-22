@@ -11,6 +11,7 @@ patches:
   - path: patches/ledger-service.yaml
   - path: patches/trading-service.yaml
   - path: patches/notification-service.yaml
+  - path: patches/ui.yaml
   - path: patches/keycloak.yaml
   - path: patches/jaeger.yaml
 images:
@@ -19,4 +20,6 @@ images:
   - name: trading-service
     newTag: dev
   - name: notification-service
+    newTag: dev
+  - name: ledger-ui
     newTag: dev

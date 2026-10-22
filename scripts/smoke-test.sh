@@ -14,6 +14,7 @@ NOTIFY_OPS=${NOTIFY_OPS_URL:-http://localhost:8083}
 PROMETHEUS=${PROMETHEUS_URL:-http://localhost:9090}
 GRAFANA=${GRAFANA_URL:-http://localhost:3000}
 JAEGER=${JAEGER_URL:-http://localhost:16686}
+UI=${UI_URL:-http://localhost:8085}
 # CHECK_OBSERVABILITY=true: Prometheus, Grafana and Jaeger are running too (--profile observability).
 # CHECK_TRACING=true: only Jaeger is running (the Kubernetes setup).
 COMPOSE="docker compose --profile apps"
@@ -43,6 +44,11 @@ step "Wait for the services"
 wait_for_status "keycloak" "$KEYCLOAK/realms/ledger/.well-known/openid-configuration" 200
 wait_for_status "ledger-service" "$LEDGER/api/v1/accounts/00000000-0000-0000-0000-000000000000" 401
 wait_for_status "trading-service" "$TRADING/api/v1/accounts/00000000-0000-0000-0000-000000000000/portfolio" 401
+
+step "The web UI is served, and a deep link falls back to the app (single-page routing)"
+wait_for_status "web ui" "$UI/healthz" 200
+curl -fsS "$UI/" | grep -q '<div id="root">' || fail "the UI home page does not contain the app root"
+curl -fsS "$UI/accounts/some-id/trading" | grep -q '<div id="root">' || fail "a deep link did not fall back to index.html"
 
 step "Log in as alice"
 TOKEN_URL="$KEYCLOAK/realms/ledger/protocol/openid-connect/token"

@@ -164,6 +164,15 @@ services:
       MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
       MANAGEMENT_OTLP_TRACING_ENDPOINT: http://jaeger:4318/v1/traces
 
+  # The web UI: static files served by nginx. Open http://localhost:8085 (Keycloak and the APIs must be running too).
+  ui:
+    profiles: ["apps"]
+    build:
+      context: ui
+    ports: ["127.0.0.1:8085:8080"]
+    mem_limit: 64m
+    restart: on-failure
+
   # ---- Observability. Start it next to the apps:
   #   docker compose --profile apps --profile observability up -d --build
   # Jaeger (traces) is also part of the apps profile because every app sends traces to it.

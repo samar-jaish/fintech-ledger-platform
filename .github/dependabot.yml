@@ -18,6 +18,16 @@ updates:
       actions:
         patterns: ["*"]
   - package-ecosystem: docker
+    directory: "/ui"
+    schedule:
+      interval: monthly
+    groups:
+      ui-docker:
+        patterns: ["*"]
+    ignore:
+      - dependency-name: "node"
+        update-types: ["version-update:semver-major"]
+  - package-ecosystem: docker
     directory: "/docker"
     schedule: { interval: monthly }
     ignore:

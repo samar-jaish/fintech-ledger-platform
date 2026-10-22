@@ -15,6 +15,7 @@ resources:
   - ledger-service.yaml
   - trading-service.yaml
   - notification-service.yaml
+  - ui.yaml
 labels:
   - pairs:
       app.kubernetes.io/part-of: ledger-platform

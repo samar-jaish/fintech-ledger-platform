@@ -171,7 +171,7 @@ what the tests and running from the IDE use. Design notes: [ADR 0013](docs/adr/0
 
 Every push and pull request runs three stages on GitHub Actions: all unit and integration tests, then a smoke test that
 starts the whole platform with Docker Compose and sends real requests (login, deposit, trade, replay, access rules and the
-Kafka event path, health, metrics, the Grafana dashboard and cross-service traces, see `scripts/smoke-test.sh`), and, on `master` only, publishing the three images to the GitHub
+Kafka event path, health, metrics, the Grafana dashboard and cross-service traces, see `scripts/smoke-test.sh`), and, on `master` only, publishing the four images (three services and the UI) to the GitHub
 Container Registry (`ghcr.io/samar-jaish/fintech-ledger-platform/<service>`, tagged `latest` and with the commit id).
 Design notes: [ADR 0014](docs/adr/0014-ci-smoke-test-and-image-publishing.md).
 
@@ -227,6 +227,17 @@ cd ui
 npm install
 npm run dev                                   # http://localhost:5173
 npm test                                      # unit and component tests (no browser or network needed)
+```
+
+The UI also ships as a container (nginx serving the compiled files, no Node at run time). It is part of the `apps` profile
+and of the kind cluster, so after `docker compose --profile apps up -d --build` the finished app is at **http://localhost:8085**.
+Browser tests (Playwright, a real Chromium) sign in at Keycloak and run a journey through the whole platform; CI runs them
+after the smoke test:
+
+```bash
+cd ui
+npx playwright install chromium   # once
+npm run e2e                       # needs the platform running; UI_URL=... to point elsewhere
 ```
 
 Sign in as `alice` / `alice123`. The APIs allow calls from `http://localhost:5173` (CORS); see
@@ -292,6 +303,7 @@ trading-service/           trades (saga), holdings, market data, portfolio; own 
 notification-service/      Kafka consumer with its own database
 ui/                        web UI: React, TypeScript, Vite (Keycloak login, calls the APIs)
 docker/                    Dockerfile, Keycloak realm, Postgres init script, Prometheus and Grafana configuration
+ui/                        Web UI (React), its Dockerfile, nginx.conf and browser tests (e2e/)
 k8s/                       Kubernetes manifests (Kustomize base and a kind overlay) and the kind cluster config
 scripts/                   smoke test, kind-up and kind-down
 docs/                      ADRs and roadmap
