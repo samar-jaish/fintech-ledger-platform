@@ -23,17 +23,21 @@ async function openAccount(page: Page, holder: string): Promise<string> {
 test('sign in, open accounts, add money, send money and buy a share', async ({ page }) => {
   await signIn(page, 'alice', 'alice123');
 
-  const first = await openAccount(page, 'E2E Alice main');
+  // Alice keeps her accounts between runs, so each run uses names of its own and never picks up an old account.
+  const tag = Date.now().toString(36);
+  const mainName = `E2E Alice main ${tag}`;
+
+  const first = await openAccount(page, mainName);
   await page.getByLabel('Amount to add').fill('1000');
   await page.getByRole('button', { name: 'Add money' }).click();
   await expect(page.getByLabel('Balance')).toContainText('1,000.00');
 
   await page.getByRole('link', { name: 'Accounts', exact: true }).click();
-  const second = await openAccount(page, 'E2E Alice savings');
+  const second = await openAccount(page, `E2E Alice savings ${tag}`);
   expect(second).not.toBe(first);
 
   await page.getByRole('link', { name: 'Accounts', exact: true }).click();
-  await page.getByRole('link', { name: /E2E Alice main/ }).first().click();
+  await page.getByRole('link', { name: mainName }).click();
   await page.waitForURL(new RegExp(`/accounts/${first}$`));
 
   await page.getByLabel('To account id').fill(second);

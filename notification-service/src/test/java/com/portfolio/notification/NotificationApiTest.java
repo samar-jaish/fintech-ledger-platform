@@ -93,7 +93,15 @@ class NotificationApiTest {
         String body = annStream.getResponse().getContentAsString();
         assertTrue(body.contains("event:notification"), body);
         assertTrue(body.contains("\"direction\":\"SENT\""), body);
-        assertEquals("", otherStream.getResponse().getContentAsString(), "another user must receive nothing");
+        assertTrue(!otherStream.getResponse().getContentAsString().contains("12.34"), "another user must receive nothing");
+    }
+
+    @Test
+    void stream_answersAtOnce_soTheClientKnowsItIsOpen() throws Exception {
+        MvcResult stream = mvc.perform(get("/api/v1/notifications/stream").with(jwt()))
+                .andExpect(request().asyncStarted()).andReturn();
+
+        assertTrue(stream.getResponse().getContentAsString().contains("connected"));
     }
 
     @Test

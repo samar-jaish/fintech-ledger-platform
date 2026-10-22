@@ -44,6 +44,13 @@ class NotificationBroadcaster {
         emitter.onCompletion(remove);
         emitter.onTimeout(emitter::complete);   // a normal end: the client reconnects
         emitter.onError(e -> remove.run());
+        // Send something at once. The response headers reach the browser only with the first bytes, so without this the
+        // client would not know the stream is open until the first keep-alive, many seconds later.
+        try {
+            emitter.send(SseEmitter.event().comment("connected"));
+        } catch (IOException | IllegalStateException e) {
+            emitter.completeWithError(e);
+        }
         return emitter;
     }
 

@@ -135,8 +135,14 @@ BOB_SEES_ALICE=$(curl -fsS "$NOTIFY_API/api/v1/notifications?limit=100" -H "Auth
   | jq --arg a "$ACCOUNT" '[.[] | select(.fromAccountId == $a or .toAccountId == $a)] | length')
 [ "$BOB_SEES_ALICE" = "0" ] || fail "bob can see $BOB_SEES_ALICE notification(s) about alice's account"
 # The stream never ends by itself, so curl is stopped after 3 seconds (exit code 28 is expected) and only the headers are read.
-STREAM_HEADERS=$(curl -sS -N --max-time 3 -D - -o /dev/null -H "$AUTH" -H 'Accept: text/event-stream' "$NOTIFY_API/api/v1/notifications/stream" 2>/dev/null || true)
-grep -qi '^content-type: text/event-stream' <<< "$STREAM_HEADERS" || fail "the live stream did not answer with text/event-stream"
+STREAM_OUT=$(mktemp)
+curl -sS -N --max-time 5 -D "$STREAM_OUT" -o /dev/null -H "$AUTH" -H 'Accept: text/event-stream' "$NOTIFY_API/api/v1/notifications/stream" || true
+STREAM_HEADERS=$(cat "$STREAM_OUT")
+if ! grep -qi '^content-type: *text/event-stream' <<< "$STREAM_HEADERS"; then
+  echo "--- what the stream endpoint answered (empty means no headers arrived within 5 seconds):"
+  echo "$STREAM_HEADERS"
+  fail "the live stream did not answer with text/event-stream"
+fi
 PREFLIGHT=$(curl -sS -D - -o /dev/null -X OPTIONS "$NOTIFY_API/api/v1/notifications/stream" -H 'Origin: http://localhost:8085' \
   -H 'Access-Control-Request-Method: GET' -H 'Access-Control-Request-Headers: authorization,last-event-id')
 grep -qi '^access-control-allow-origin: http://localhost:8085' <<< "$PREFLIGHT" || fail "the notification API does not allow the web UI origin (CORS)"
