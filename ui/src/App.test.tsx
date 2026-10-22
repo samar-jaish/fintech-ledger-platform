@@ -22,6 +22,11 @@ const ledger = vi.hoisted(() => ({
 }));
 vi.mock('./api/ledger', () => ledger);
 vi.mock('./api/trading', () => ({ getPortfolio: vi.fn(), getTrades: vi.fn(), placeTrade: vi.fn() }));
+// The bell in the header talks to the notification service; here it just has nothing to show.
+vi.mock('./api/notifications', () => ({
+  listNotifications: vi.fn().mockResolvedValue([]),
+  openNotificationStream: vi.fn(() => new Promise<void>(() => {})),
+}));
 
 const ID = '3f2a9c1e-5b7d-4e8a-9c21-7d4e5f6a8b90';
 const alice: AuthState = {

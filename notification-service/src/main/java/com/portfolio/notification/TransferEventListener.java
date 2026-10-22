@@ -24,12 +24,14 @@ class TransferEventListener {
     static final String EVENT_ID_HEADER = "event-id";
 
     private final NotificationRepository notifications;
+    private final NotificationBroadcaster broadcaster;
     private final ObjectMapper json = new ObjectMapper();
     private final Counter stored;
     private final Counter duplicates;
 
-    TransferEventListener(NotificationRepository notifications, MeterRegistry registry) {
+    TransferEventListener(NotificationRepository notifications, NotificationBroadcaster broadcaster, MeterRegistry registry) {
         this.notifications = notifications;
+        this.broadcaster = broadcaster;
         this.stored = Counter.builder("notification.events").tag("result", "stored")
                 .description("Transfer events handled").register(registry);
         this.duplicates = Counter.builder("notification.events").tag("result", "duplicate")
@@ -47,9 +49,13 @@ class TransferEventListener {
 
         String message = "Transfer of " + event.amount().toPlainString() + " from " + event.fromAccountId()
                 + " to " + event.toAccountId() + (event.description() == null ? "" : " (" + event.description() + ")");
-        if (notifications.saveIfNew(eventId, event, message)) {
+        var saved = notifications.saveIfNew(eventId, event, message);
+        if (saved.isPresent()) {
             stored.increment();
             log.info("NOTIFY: {}", message);
+            // Push to anyone watching, after the row is stored. A failure to push never fails the event: the row is the truth,
+            // and a client that missed a push catches up from the database when it reconnects.
+            broadcaster.publish(saved.get());
         } else {
             duplicates.increment();
             log.info("Duplicate event {} ignored", eventId);

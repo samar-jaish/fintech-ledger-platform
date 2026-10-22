@@ -2,6 +2,7 @@ import { NavLink, Route, Routes } from 'react-router';
 import { useAuth } from './auth/AuthContext';
 import { AccountPage, MoneyTab, TradingTab, UnknownRoute } from './pages/AccountPage';
 import { AccountsPage } from './pages/AccountsPage';
+import { NotificationBell } from './notifications/NotificationBell';
 
 export default function App() {
   const { state, login, logout } = useAuth();
@@ -20,6 +21,7 @@ export default function App() {
         </div>
         {state.status === 'authenticated' && (
           <div className="who">
+            <NotificationBell />
             <span className="who-name">{state.displayName}</span>
             {state.roles.map((role) => (
               <span key={role} className="badge">

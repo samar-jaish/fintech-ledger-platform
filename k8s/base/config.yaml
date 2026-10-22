@@ -11,8 +11,7 @@ data:
   KEYCLOAK_ISSUER_URI: http://localhost:8180/realms/ledger
   SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWKSETURI: http://keycloak:8180/realms/ledger/protocol/openid-connect/certs
   KEYCLOAK_TOKEN_URL: http://keycloak:8180/realms/ledger/protocol/openid-connect/token
-  # (MANAGEMENT_SERVER_ADDRESS is set per service in ledger-service.yaml and trading-service.yaml: the notification
-  # service has no separate operations port, and Spring refuses the setting there.)
+  # (MANAGEMENT_SERVER_ADDRESS is set per service, in each Deployment.)
   MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
   MANAGEMENT_OTLP_TRACING_ENDPOINT: http://jaeger:4318/v1/traces
   # Web origins allowed to call the APIs from a browser (the UI dev server and the containerised UI).

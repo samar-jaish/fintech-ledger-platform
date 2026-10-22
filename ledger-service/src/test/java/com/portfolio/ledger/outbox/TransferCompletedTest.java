@@ -9,6 +9,7 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** The JSON field names are a contract with other services, so they are pinned here. */
 class TransferCompletedTest {
@@ -25,5 +26,18 @@ class TransferCompletedTest {
         assertEquals(to.toString(), json.get("toAccountId").asText());
         assertEquals(0, new BigDecimal("12.50").compareTo(json.get("amount").decimalValue()));
         assertEquals("lunch", json.get("description").asText());
+        assertTrue(json.get("fromOwner").isNull());   // no owners given: house accounts
+    }
+
+    @Test
+    void json_carriesTheOwnersOfBothAccounts() throws Exception {
+        UUID tx = UUID.randomUUID(), from = UUID.randomUUID(), to = UUID.randomUUID();
+        var event = TransferCompleted.of(tx, new TransferRequest("k", from, to, new BigDecimal("1"), null),
+                java.util.Map.of(from, "user-a", to, "user-b"));
+
+        JsonNode json = new ObjectMapper().readTree(event.toJson());
+
+        assertEquals("user-a", json.get("fromOwner").asText());
+        assertEquals("user-b", json.get("toOwner").asText());
     }
 }

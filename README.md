@@ -127,6 +127,13 @@ one notification per event (ignoring duplicate deliveries), and sends messages i
 (`ledger.transfers.DLT`) after a few retries. Design notes: [ADR 0009](docs/adr/0009-transactional-outbox-and-kafka.md),
 [ADR 0010](docs/adr/0010-separate-notification-service.md).
 
+The notification service also has a small API on port 8084, secured like the others (bearer tokens from Keycloak, CORS for
+the web UI): `GET /api/v1/notifications` lists the signed-in user's recent notifications, and
+`GET /api/v1/notifications/stream` is a live stream (server-sent events) of new ones. A user only ever sees notifications
+about their own accounts: the ledger puts the two owners' ids in each transfer event, and the service filters on the token's
+subject. A client that reconnects sends `Last-Event-ID` and first receives what it missed. The web UI shows this as a bell in
+the header and refreshes balances when something arrives. Design notes: [ADR 0020](docs/adr/0020-live-notifications.md).
+
 Run it: `docker compose up -d`, then start the app with `OUTBOX_RELAY_ENABLED=true`
 (PowerShell: `$env:OUTBOX_RELAY_ENABLED="true"; mvn -pl ledger-service spring-boot:run`) and, in a second terminal, the notification service
 (`mvn -pl notification-service spring-boot:run`). Make a transfer or deposit: the ledger log shows the relay
@@ -187,6 +194,7 @@ docker compose --profile apps --profile observability up -d --build
 | Prometheus (targets, alert rules) | http://localhost:9090 |
 | Jaeger (traces) | http://localhost:16686 |
 | Health: ledger, trading, notification | http://localhost:9080, :9082, :8083 + `/actuator/health/readiness` |
+| Notification API (list, live stream) | http://localhost:8084/api/v1/notifications (needs a bearer token) |
 | Raw metrics | http://localhost:9080/actuator/prometheus (and :9082, :8083) |
 
 Every service reports health (liveness and readiness, where ready means "can reach its database"), JVM, HTTP, database pool

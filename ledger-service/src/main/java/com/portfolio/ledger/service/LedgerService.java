@@ -88,7 +88,7 @@ public class LedgerService {
         repo.updateBalance(from.id(), from.balance().subtract(req.amount()));
         repo.updateBalance(to.id(), to.balance().add(req.amount()));
         repo.insertOutboxEvent(TransferCompleted.AGGREGATE, txId, TransferCompleted.TYPE,
-                TransferCompleted.of(txId, req).toJson());
+                TransferCompleted.of(txId, req, repo.findOwners(List.of(req.fromAccountId(), req.toAccountId()))).toJson());
         return new TransferResult(txId, false);
     }
 

@@ -54,3 +54,39 @@ test('a person who is not signed in sees only the sign-in page', async ({ page }
   await expect(page.getByRole('button', { name: 'Sign in' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Your accounts' })).toHaveCount(0);
 });
+
+test('a transfer appears live for the person who receives it, without reloading', async ({ browser, baseURL }) => {
+  // Two people, two separate browser sessions.
+  const bobContext = await browser.newContext({ baseURL });
+  const aliceContext = await browser.newContext({ baseURL });
+  const bob = await bobContext.newPage();
+  const alice = await aliceContext.newPage();
+  try {
+    await signIn(bob, 'bob', 'bob123');
+    const bobAccount = await openAccount(bob, 'E2E Bob');
+    await expect(bob.getByLabel('Balance')).toContainText('0.00');
+    // Wait until Bob's live connection is open before Alice sends, so the test shows a push, not a page load.
+    await bob.getByRole('button', { name: 'Notifications' }).click();
+    await expect(bob.getByText(/Live:/)).toBeVisible();
+    await bob.keyboard.press('Escape');
+
+    await signIn(alice, 'alice', 'alice123');
+    await openAccount(alice, 'E2E Alice sender');
+    await alice.getByLabel('Amount to add').fill('100');
+    await alice.getByRole('button', { name: 'Add money' }).click();
+    await expect(alice.getByLabel('Balance')).toContainText('100.00');
+    await alice.getByLabel('To account id').fill(bobAccount);
+    await alice.getByLabel('Amount', { exact: true }).fill('40');
+    await alice.getByRole('button', { name: 'Send money' }).click();
+    await expect(alice.getByRole('status').filter({ hasText: 'Transfer sent.' })).toBeVisible();
+
+    // Bob never touched his page: the badge and the balance change by themselves.
+    await expect(bob.getByRole('button', { name: /Notifications, \d+ new/ })).toBeVisible();
+    await expect(bob.getByLabel('Balance')).toContainText('40.00');
+    await bob.getByRole('button', { name: /Notifications/ }).click();
+    await expect(bob.getByText(/You received 40\.00 from account/)).toBeVisible();
+  } finally {
+    await bobContext.close();
+    await aliceContext.close();
+  }
+});

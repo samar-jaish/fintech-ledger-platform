@@ -105,7 +105,7 @@ public class OptimisticLedgerService {
             }
         }
         repo.insertOutboxEvent(TransferCompleted.AGGREGATE, txId, TransferCompleted.TYPE,
-                TransferCompleted.of(txId, req).toJson());
+                TransferCompleted.of(txId, req, repo.findOwners(List.of(req.fromAccountId(), req.toAccountId()))).toJson());
         return new TransferResult(txId, false);
     }
 

@@ -77,6 +77,16 @@ public class JdbcLedgerRepository implements LedgerRepository {
     }
 
     @Override
+    public java.util.Map<UUID, String> findOwners(Collection<UUID> accountIds) {
+        java.util.Map<UUID, String> owners = new java.util.HashMap<>();
+        jdbc.sql("SELECT id, owner_subject FROM accounts WHERE id IN (:ids) AND owner_subject IS NOT NULL")
+                .param("ids", accountIds)
+                .query((rs, row) -> owners.put(rs.getObject("id", UUID.class), rs.getString("owner_subject")))
+                .list();
+        return owners;
+    }
+
+    @Override
     public Optional<Account> findAccount(UUID id) {
         return jdbc.sql("SELECT " + ACCOUNT_COLS + " FROM accounts WHERE id = :id")
                 .param("id", id).query(ACCOUNT_MAPPER).optional();

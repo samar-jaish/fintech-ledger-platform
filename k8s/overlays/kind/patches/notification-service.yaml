@@ -6,4 +6,5 @@ metadata:
 spec:
   type: NodePort
   ports:
+    - { name: http, port: 8084, nodePort: 30084 }
     - { name: ops, port: 8083, nodePort: 30083 }

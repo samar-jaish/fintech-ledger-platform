@@ -19,6 +19,9 @@ public interface LedgerRepository {
 
     boolean isOwnedBy(UUID accountId, String ownerSubject);
 
+    /** The owning user (identity provider subject) of each given account. House accounts have no owner and are absent. */
+    java.util.Map<UUID, String> findOwners(Collection<UUID> accountIds);
+
     Optional<Account> findAccount(UUID id);
 
     /** Accounts owned by one user (identity provider subject), oldest first. */

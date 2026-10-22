@@ -11,6 +11,7 @@ KEYCLOAK=${KEYCLOAK_URL:-http://localhost:8180}
 LEDGER_OPS=${LEDGER_OPS_URL:-http://localhost:9080}
 TRADING_OPS=${TRADING_OPS_URL:-http://localhost:9082}
 NOTIFY_OPS=${NOTIFY_OPS_URL:-http://localhost:8083}
+NOTIFY_API=${NOTIFY_API_URL:-http://localhost:8084}
 PROMETHEUS=${PROMETHEUS_URL:-http://localhost:9090}
 GRAFANA=${GRAFANA_URL:-http://localhost:3000}
 JAEGER=${JAEGER_URL:-http://localhost:16686}
@@ -118,6 +119,28 @@ for _ in $(seq 1 30); do
 done
 [ "$NOTIFIED" = "true" ] || fail "no notification after 60 s"
 echo "notification received"
+
+step "The notification API: alice sees her own notifications, bob cannot see hers, no token is refused, the live stream opens"
+CODE=$(curl -s -o /dev/null -w '%{http_code}' "$NOTIFY_API/api/v1/notifications")
+[ "$CODE" = "401" ] || fail "expected HTTP 401 without a token, got $CODE"
+ALICE_COUNT=0
+for _ in $(seq 1 15); do
+  ALICE_COUNT=$(curl -fsS "$NOTIFY_API/api/v1/notifications" -H "$AUTH" | jq 'length')
+  [ "$ALICE_COUNT" -ge 1 ] 2>/dev/null && break
+  sleep 2
+done
+[ "$ALICE_COUNT" -ge 1 ] 2>/dev/null || fail "alice has no notifications for her own transfers"
+# Bob may have notifications of his own (from earlier runs), but none may concern alice's account.
+BOB_SEES_ALICE=$(curl -fsS "$NOTIFY_API/api/v1/notifications?limit=100" -H "Authorization: Bearer $BOB" \
+  | jq --arg a "$ACCOUNT" '[.[] | select(.fromAccountId == $a or .toAccountId == $a)] | length')
+[ "$BOB_SEES_ALICE" = "0" ] || fail "bob can see $BOB_SEES_ALICE notification(s) about alice's account"
+# The stream never ends by itself, so curl is stopped after 3 seconds (exit code 28 is expected) and only the headers are read.
+STREAM_HEADERS=$(curl -sS -N --max-time 3 -D - -o /dev/null -H "$AUTH" -H 'Accept: text/event-stream' "$NOTIFY_API/api/v1/notifications/stream" 2>/dev/null || true)
+grep -qi '^content-type: text/event-stream' <<< "$STREAM_HEADERS" || fail "the live stream did not answer with text/event-stream"
+PREFLIGHT=$(curl -sS -D - -o /dev/null -X OPTIONS "$NOTIFY_API/api/v1/notifications/stream" -H 'Origin: http://localhost:8085' \
+  -H 'Access-Control-Request-Method: GET' -H 'Access-Control-Request-Headers: authorization,last-event-id')
+grep -qi '^access-control-allow-origin: http://localhost:8085' <<< "$PREFLIGHT" || fail "the notification API does not allow the web UI origin (CORS)"
+echo "notification API ok"
 
 step "Health probes: all three services are live and ready"
 wait_for_status "ledger-service readiness" "$LEDGER_OPS/actuator/health/readiness" 200

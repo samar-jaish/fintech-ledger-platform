@@ -7,4 +7,5 @@ export const config = {
   clientId: env.VITE_KEYCLOAK_CLIENT_ID ?? 'ledger-ui',
   ledgerApi: env.VITE_LEDGER_API ?? 'http://localhost:8080',
   tradingApi: env.VITE_TRADING_API ?? 'http://localhost:8082',
+  notificationApi: env.VITE_NOTIFICATION_API ?? 'http://localhost:8084',
 };

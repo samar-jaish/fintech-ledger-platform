@@ -114,6 +114,17 @@ class LedgerConcurrencyTest {
     }
 
     @Test
+    void findOwners_returnsTheOwnerOfUserAccountsAndOmitsHouseAccounts() {
+        Account house = service.openSystemAccount("house", "USD");
+        Account mine = repo.createAccount("dana", "USD", false, "user-dana");
+
+        var owners = repo.findOwners(List.of(house.id(), mine.id()));
+
+        assertEquals(1, owners.size());
+        assertEquals("user-dana", owners.get(mine.id()));
+    }
+
+    @Test
     void database_rejectsNegativeBalanceOnCustomerAccount() {
         Account a = service.openAccount("carol", "USD");
         assertThrows(DataAccessException.class,

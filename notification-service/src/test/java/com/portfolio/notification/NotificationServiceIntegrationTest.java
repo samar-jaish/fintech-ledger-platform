@@ -74,6 +74,19 @@ class NotificationServiceIntegrationTest {
     }
 
     @Test
+    void eventWithOwners_becomesANotificationThatBothOwnersCanSee() throws Exception {
+        UUID tx = UUID.randomUUID();
+        String payer = "payer-" + tx, payee = "payee-" + tx;
+        publish(tx.toString(), UUID.randomUUID(), "{\"transactionId\":\"" + tx + "\",\"fromAccountId\":\"" + UUID.randomUUID()
+                + "\",\"toAccountId\":\"" + UUID.randomUUID() + "\",\"amount\":3.00,\"fromOwner\":\"" + payer
+                + "\",\"toOwner\":\"" + payee + "\"}");
+
+        await().atMost(Duration.ofSeconds(60)).until(() -> notifications.countForTransaction(tx) == 1);
+        assertEquals("SENT", notifications.latestFor(payer, 10).get(0).viewFor(payer).direction());
+        assertEquals("RECEIVED", notifications.latestFor(payee, 10).get(0).viewFor(payee).direction());
+    }
+
+    @Test
     void unreadableMessage_endsUpOnTheDeadLetterTopic() throws Exception {
         String key = "poison-" + UUID.randomUUID();
         publish(key, UUID.randomUUID(), "this is not json");

@@ -12,4 +12,4 @@ import java.util.UUID;
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 record TransferCompletedEvent(UUID transactionId, UUID fromAccountId, UUID toAccountId,
-                              BigDecimal amount, String description) { }
+                              BigDecimal amount, String description, String fromOwner, String toOwner) { }

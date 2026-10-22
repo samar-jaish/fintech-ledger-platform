@@ -40,3 +40,10 @@ export const parseAmount = (text: string) => parsePositive(text, 4);
 
 /** Share quantity: a positive number with at most 6 decimals (the trading API allows 6). */
 export const parseQuantity = (text: string) => parsePositive(text, 6);
+
+/** A plain amount, for places where the currency is not known (a notification carries only the number). */
+export function formatAmount(value: number | string): string {
+  const n = toNumber(value);
+  if (Number.isNaN(n)) return '–';
+  return new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 }).format(n);
+}

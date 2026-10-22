@@ -1,5 +1,5 @@
 server:
-  port: 8083                         # serves only the operations endpoints (health, Prometheus); no business API
+  port: 8084                         # the notification API (list and live stream); secured with bearer tokens
   address: 127.0.0.1                 # this computer only when run from the IDE; the compose file opens it to the compose network
 
 spring:
@@ -10,6 +10,12 @@ spring:
     url: ${NOTIFICATIONS_DB_URL:jdbc:postgresql://localhost:5432/notifications}
     username: ${NOTIFICATIONS_DB_USER:ledger}
     password: ${NOTIFICATIONS_DB_PASSWORD:ledger}
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # Tokens are validated against Keycloak. Discovery happens on the first request, not at startup.
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8180/realms/ledger}
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     consumer:
@@ -24,11 +30,20 @@ spring:
 
 notification:
   topic: ledger.transfers
+  stream:
+    # A live stream is checked once, when it opens. Closing it every few minutes (about a token's lifetime) makes the browser
+    # reconnect with a fresh token, so a signed-out or removed user does not keep receiving events.
+    timeout-ms: 300000
+    heartbeat-ms: 20000             # a comment line sent this often keeps proxies from closing an idle connection
   retry:
     interval-ms: 1000
     attempts: 3                     # retries before a message is sent to the dead-letter topic
 
 management:
+  server:
+    # Operations endpoints (health, Prometheus) keep the port they always had, separate from the API port.
+    port: 8083
+    address: 127.0.0.1   # this computer only when run from the IDE; the compose file and the cluster open it
   endpoints:
     web:
       exposure:
@@ -50,3 +65,8 @@ management:
   tracing:
     sampling:
       probability: 0.0                    # off locally; docker compose (observability profile) sets it to 1.0
+
+app:
+  cors:
+    # Web origins allowed to call this API from a browser (comma-separated). Same setting as the other services.
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:5173}
